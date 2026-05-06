@@ -39,7 +39,14 @@ namespace InsuranceDecisionIntelligence.Infrastructure.FileStorage.Services
 
         public async Task<Stream> OpenAsync(string FolderPath, string filename)
         {
-            string subFolderName = "C:\\Files";
+            var basePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), ".."));
+
+            var subFolderName = Path.Combine(
+                basePath,
+                "InsuranceDecisionIntelligence.Infrastructure",
+                "FileStorage",
+                "Uploads"
+            );
 
             if (!Directory.Exists(subFolderName))
             {

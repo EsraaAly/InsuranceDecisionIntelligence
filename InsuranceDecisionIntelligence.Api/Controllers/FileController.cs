@@ -23,8 +23,14 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
         [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
         public async Task<IActionResult> UploadAsync([FromForm] UploadFileDto dto)
         {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             string filepath = await _fileService.ProcessFile(dto.File);
-            return Ok(filepath);
+            stopwatch.Stop();
+            return Ok(new
+            {
+                Data = filepath,
+                TimeTaken = stopwatch.ElapsedMilliseconds
+            });
         }
 
         //[HttpGet]
