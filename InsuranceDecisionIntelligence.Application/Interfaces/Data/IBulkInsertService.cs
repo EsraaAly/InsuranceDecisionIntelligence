@@ -9,6 +9,6 @@ namespace InsuranceDecisionIntelligence.Application.Interfaces.Data
 {
     public interface IBulkInsertService
     {
-        Task InsertAsync(string fileName, DataTable dataTable);
+        Task InsertAsync(string fileName, IDataReader reader);
     }
 }

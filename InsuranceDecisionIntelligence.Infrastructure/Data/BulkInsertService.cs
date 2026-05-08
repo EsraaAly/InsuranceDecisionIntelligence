@@ -22,82 +22,80 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data
         }
 
         // ================= MAIN =================
-        public async Task InsertAsync(string fileName, DataTable dataTable)
-        {
-            using SqlConnection conn = new SqlConnection(_connectionString.DefaultConnection);
-            await conn.OpenAsync();
-
-            NormalizeColumns(dataTable);
-
-            using var transaction = conn.BeginTransaction();
-
-            try
-            {
-                string baseName = CleanName(Path.GetFileNameWithoutExtension(fileName));
-                string tableName = $"{baseName}_{DateTime.Now:yyyyMMddHHmmss}";
-
-                await CreateTableAsync(tableName, dataTable, conn, transaction);
-
-                await InsertDataAsync(tableName, dataTable, conn, transaction);
-
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-
         //public async Task InsertAsync(string fileName, DataTable dataTable)
         //{
         //    using SqlConnection conn = new SqlConnection(_connectionString.DefaultConnection);
         //    await conn.OpenAsync();
 
+        //    NormalizeColumns(dataTable);
+
         //    using var transaction = conn.BeginTransaction();
 
         //    try
         //    {
-
         //        string baseName = CleanName(Path.GetFileNameWithoutExtension(fileName));
         //        string tableName = $"{baseName}_{DateTime.Now:yyyyMMddHHmmss}";
-                
-        //        // 1. get columns
-        //        var columns = new List<string>();
-        //        for (int i = 0; i < reader.FieldCount; i++)
-        //        {
-        //            string name;
 
-        //            try
-        //            {
-        //                name = reader.GetName(i);
-        //            }
-        //            catch
-        //            {
-        //                name = $"Column{i}";
-        //            }
+        //        await CreateTableAsync(tableName, dataTable, conn, transaction);
 
-        //            columns.Add(CleanName(name));
-        //        }
-
-        //        // 2. create table
-        //        await CreateTableAsync(tableName, columns, conn, transaction);
-
-        //        // 3. skip header (Excel first row)
-        //        reader.Read();
-
-        //        //4. insert data
-        //        await InsertDataAsync(tableName, reader,columns, conn, transaction);
+        //        await InsertDataAsync(tableName, dataTable, conn, transaction);
 
         //        await transaction.CommitAsync();
         //    }
         //    catch
         //    {
         //        await transaction.RollbackAsync();
-        //        await conn.CloseAsync();
         //        throw;
         //    }
         //}
+
+        public async Task InsertAsync(string fileName, IDataReader reader)
+        {
+            using SqlConnection conn = new SqlConnection(_connectionString.DefaultConnection);
+            await conn.OpenAsync();
+
+            using var transaction = conn.BeginTransaction();
+
+            try
+            {
+
+                string baseName = CleanName(Path.GetFileNameWithoutExtension(fileName));
+                string tableName = $"{baseName}_{DateTime.Now:yyyyMMddHHmmss}";
+
+                // 1. get columns
+                if (!reader.Read())
+                    throw new Exception("Empty file");
+
+                var columns = new List<string>();
+
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    string? value = reader.GetValue(i)?.ToString();
+
+                    if (string.IsNullOrWhiteSpace(value))
+                        value = $"Column{i}";
+
+                    columns.Add(CleanName(value));
+                }
+
+                // 2. create table
+                await CreateTableAsync(tableName, columns, conn, transaction);
+
+                // 3. skip header (Excel first row)
+                //reader.Read();
+
+                //4. insert data
+                await InsertDataAsync(tableName, reader, columns, conn, transaction);
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                await conn.CloseAsync();
+                throw;
+            }
+        }
 
         // ================= NORMALIZE =================
         private void NormalizeColumns(DataTable dt)
@@ -144,45 +142,23 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data
         //}
 
         // ================= CREATE TABLE =================
-        private async Task CreateTableAsync(
-            string tableName,
-            DataTable dataTable,
-            SqlConnection conn,
-            SqlTransaction transaction)
-        {
-            var sb = new StringBuilder();
-            bool first = true;
-
-            foreach (DataColumn column in dataTable.Columns)
-            {
-                if (!first)
-                    sb.Append(",");
-
-                sb.Append($"[{column.ColumnName}] NVARCHAR(MAX)");
-
-                first = false;
-            }
-
-            var sql = $@"
-                        CREATE TABLE [{tableName}] (
-                        {sb}
-                        )";
-
-            using var cmd = new SqlCommand(sql, conn, transaction);
-            await cmd.ExecuteNonQueryAsync();
-        }
         //private async Task CreateTableAsync(
-        //                 string tableName,
-        //                 List<string> columns,
-        //                 SqlConnection conn,
-        //                 SqlTransaction transaction)
+        //    string tableName,
+        //    DataTable dataTable,
+        //    SqlConnection conn,
+        //    SqlTransaction transaction)
         //{
         //    var sb = new StringBuilder();
+        //    bool first = true;
 
-        //    for (int i = 0; i < columns.Count; i++)
+        //    foreach (DataColumn column in dataTable.Columns)
         //    {
-        //        if (i > 0) sb.Append(",");
-        //        sb.Append($"[{columns[i]}] NVARCHAR(MAX)");
+        //        if (!first)
+        //            sb.Append(",");
+
+        //        sb.Append($"[{column.ColumnName}] NVARCHAR(MAX)");
+
+        //        first = false;
         //    }
 
         //    var sql = $@"
@@ -193,51 +169,73 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data
         //    using var cmd = new SqlCommand(sql, conn, transaction);
         //    await cmd.ExecuteNonQueryAsync();
         //}
-
-        // ================= BULK INSERT (FAST) =================
-        private async Task InsertDataAsync(
-            string tableName,
-            DataTable dataTable,
-            SqlConnection conn,
-            SqlTransaction transaction)
+        private async Task CreateTableAsync(
+                         string tableName,
+                         List<string> columns,
+                         SqlConnection conn,
+                         SqlTransaction transaction)
         {
-            using var bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.TableLock, transaction)
-            {
-                DestinationTableName = tableName,
-                BatchSize = 10000,
-                BulkCopyTimeout = 0
-            };
+            var sb = new StringBuilder();
 
-            foreach (DataColumn column in dataTable.Columns)
+            for (int i = 0; i < columns.Count; i++)
             {
-                bulkCopy.ColumnMappings.Add(column.ColumnName, column.ColumnName);
+                if (i > 0) sb.Append(",");
+                sb.Append($"[{columns[i]}] NVARCHAR(MAX)");
             }
 
-            await bulkCopy.WriteToServerAsync(dataTable);
+            var sql = $@"
+                        CREATE TABLE [{tableName}] (
+                        {sb}
+                        )";
+
+            using var cmd = new SqlCommand(sql, conn, transaction);
+            await cmd.ExecuteNonQueryAsync();
         }
 
+        // ================= BULK INSERT (FAST) =================
         //private async Task InsertDataAsync(
-        //                string tableName,
-        //                IDataReader reader,
-        //                List<string> columns,
-        //                SqlConnection conn,
-        //                SqlTransaction transaction)
+        //    string tableName,
+        //    DataTable dataTable,
+        //    SqlConnection conn,
+        //    SqlTransaction transaction)
         //{
         //    using var bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.TableLock, transaction)
         //    {
         //        DestinationTableName = tableName,
         //        BatchSize = 10000,
-        //        BulkCopyTimeout = 0,
-        //        EnableStreaming = true
+        //        BulkCopyTimeout = 0
         //    };
 
-        //    for (int i = 0; i < columns.Count; i++)
+        //    foreach (DataColumn column in dataTable.Columns)
         //    {
-        //        bulkCopy.ColumnMappings.Add(i, columns[i]);
+        //        bulkCopy.ColumnMappings.Add(column.ColumnName, column.ColumnName);
         //    }
 
-        //    await bulkCopy.WriteToServerAsync(reader);
+        //    await bulkCopy.WriteToServerAsync(dataTable);
         //}
+
+        private async Task InsertDataAsync(
+                        string tableName,
+                        IDataReader reader,
+                        List<string> columns,
+                        SqlConnection conn,
+                        SqlTransaction transaction)
+        {
+            using var bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.TableLock, transaction)
+            {
+                DestinationTableName = tableName,
+                BatchSize = 10000,
+                BulkCopyTimeout = 0,
+                EnableStreaming = true
+            };
+
+            for (int i = 0; i < columns.Count; i++)
+            {
+                bulkCopy.ColumnMappings.Add(i, columns[i]);
+            }
+
+            await bulkCopy.WriteToServerAsync(reader);
+        }
 
         // ================= TABLE EXISTS =================
         //private async Task<bool> TableExistsAsync(SqlConnection conn, string tableName)

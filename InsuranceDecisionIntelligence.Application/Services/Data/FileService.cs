@@ -48,8 +48,11 @@ namespace InsuranceDecisionIntelligence.Application.Services.Data
             {
                 var sw = Stopwatch.StartNew();
 
-                var dataTable = await _fileReader.ReadAsDataTableAsync(fullPath);
-                await _bulkInsertService.InsertAsync(file.FileName, dataTable);
+                //var dataTable = await _fileReader.ReadAsDataTableAsync(fullPath);
+                //await _bulkInsertService.InsertAsync(file.FileName, dataTable);
+
+                var reader = await _fileReader.ReadAsDataReaderAsync(fullPath);
+                await _bulkInsertService.InsertAsync(file.FileName, reader);
 
                 sw.Stop();
 

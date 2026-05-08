@@ -203,7 +203,6 @@ namespace InsuranceDecisionIntelligence.Application.FileStorage.Services
             var stream = OpenFileStream(filePath);
 
             var reader = ExcelReaderFactory.CreateCsvReader(stream);
-            reader.Read();
 
             return Task.FromResult((IDataReader)reader);
         }
