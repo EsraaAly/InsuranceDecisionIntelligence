@@ -1,5 +1,6 @@
 ﻿using ExcelDataReader;
 using InsuranceDecisionIntelligence.Application.Interfaces.Data;
+using Sylvan.Data.Csv;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace InsuranceDecisionIntelligence.Application.FileStorage.Services
 {
-    public class ExcelReaderService : IFileReader
+    public class CSVReaderService : IFileReader
     {
         //public async Task<List<Dictionary<string, object>>> ReadFileAsync(string filePath, int page, int pageSize = 1000, CancellationToken cancellationToken = default)
         //{
@@ -200,9 +201,13 @@ namespace InsuranceDecisionIntelligence.Application.FileStorage.Services
 
         public Task<IDataReader> ReadAsDataReaderAsync(string filePath)
         {
-            var stream = OpenFileStream(filePath);
 
-            var reader = ExcelReaderFactory.CreateCsvReader(stream);
+            var options = new CsvDataReaderOptions
+            {
+                HasHeaders = true
+            };
+
+            var reader = CsvDataReader.Create(filePath, options);
 
             return Task.FromResult((IDataReader)reader);
         }

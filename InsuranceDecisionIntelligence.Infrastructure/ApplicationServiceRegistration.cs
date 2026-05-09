@@ -18,11 +18,12 @@ namespace InsuranceDecisionIntelligence.Infrastructure
 
             services.AddScoped<IFileProvider, FileProviderService>();
             services.AddScoped<IFileService, FileService>();
-            services.AddScoped<IFileReader, ExcelReaderService>();
-            services.AddScoped<IBulkInsertService, BulkInsertService>();
+            services.AddScoped<IFileReader, CSVReaderService>();
+            services.AddScoped<IBulkInsertByIDataReaderService, BulkInsertByIDataReaderService>();
+            services.AddScoped<IBulkInsertByDataTableService, BulkInsertByDataTableService>();
 
 
-            
+
             return services;
         }
     }

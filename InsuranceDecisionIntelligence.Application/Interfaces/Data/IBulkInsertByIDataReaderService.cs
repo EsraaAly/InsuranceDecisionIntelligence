@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 
 namespace InsuranceDecisionIntelligence.Application.Interfaces.Data
 {
-    public interface IBulkInsertService
+    public interface IBulkInsertByIDataReaderService
     {
-        Task InsertAsync(string fileName, IDataReader reader);
+        Task InsertAsync(string path, string fileName, IDataReader reader);
     }
 }

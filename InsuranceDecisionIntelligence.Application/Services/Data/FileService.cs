@@ -15,15 +15,21 @@ namespace InsuranceDecisionIntelligence.Application.Services.Data
     {
         private readonly IFileProvider _fileProvider;
         private readonly IFileReader _fileReader;
-        private readonly IBulkInsertService _bulkInsertService;
+        private readonly IBulkInsertByIDataReaderService _bulkInsertByIDataReaderService;
+        private readonly IBulkInsertByDataTableService _bulkInsertByDataTableService;
         private readonly ILogger<FileService> _logger;
 
-        public FileService(IFileProvider fileProvider, IFileReader fileReader, IBulkInsertService bulkInsertService,ILogger<FileService> logger)
+        public FileService(IFileProvider fileProvider,
+                           IFileReader fileReader, 
+                           IBulkInsertByIDataReaderService bulkInsertByIDataReaderService,
+                           IBulkInsertByDataTableService bulkInsertByDataTableService,
+                           ILogger<FileService> logger)
         {
             _fileProvider = fileProvider;
             _fileReader = fileReader;
-            _bulkInsertService = bulkInsertService;
+            _bulkInsertByIDataReaderService = bulkInsertByIDataReaderService;
             _logger = logger;
+            _bulkInsertByDataTableService = bulkInsertByDataTableService;
         }
 
         public async Task<string> ProcessFile(IFormFile file)
@@ -46,17 +52,33 @@ namespace InsuranceDecisionIntelligence.Application.Services.Data
 
             _ = Task.Run(async () =>
             {
-                var sw = Stopwatch.StartNew();
 
+                //////////////////////////////By Data Table//////////////////////////////////
+
+                //var swRead = Stopwatch.StartNew();
                 //var dataTable = await _fileReader.ReadAsDataTableAsync(fullPath);
-                //await _bulkInsertService.InsertAsync(file.FileName, dataTable);
+                //swRead.Stop();
+                //_logger.LogInformation("Read: {ms}", swRead.ElapsedMilliseconds);
 
+
+                //var swInsert = Stopwatch.StartNew();
+                //await _bulkInsertByDataTableService.InsertAsync(file.FileName, dataTable);
+                //swInsert.Stop();
+                //_logger.LogInformation("Insert TOTAL: {ms}", swInsert.ElapsedMilliseconds);
+
+                ////////////////////////////////By Data Reader////////////////////////////////
+
+                var swRead = Stopwatch.StartNew();
                 var reader = await _fileReader.ReadAsDataReaderAsync(fullPath);
-                await _bulkInsertService.InsertAsync(file.FileName, reader);
+                swRead.Stop();
+                _logger.LogInformation("Read: {ms}", swRead.ElapsedMilliseconds);
 
-                sw.Stop();
+                var swInsert = Stopwatch.StartNew();
+                await _bulkInsertByIDataReaderService.InsertAsync(fullPath, file.FileName, reader);
 
-                _logger.LogInformation("Processing time: {ms} ms", sw.ElapsedMilliseconds);
+                swInsert.Stop();
+                _logger.LogInformation("Insert TOTAL: {ms}", swInsert.ElapsedMilliseconds);
+
             });
             //using var dataTable = await _fileReader.ReadAsDataTableAsync(fullPath);
             //await _bulkInsertService.InsertAsync(file.FileName, dataTable);
