@@ -1,4 +1,5 @@
 ﻿using InsuranceDecisionIntelligence.Application.Interfaces.Data;
+using InsuranceDecisionIntelligence.Application.Interfaces.File;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
@@ -9,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace InsuranceDecisionIntelligence.Application.Services.Data
+namespace InsuranceDecisionIntelligence.Application.Services.File
 {
     public class FileService : IFileService
     {
@@ -53,6 +54,8 @@ namespace InsuranceDecisionIntelligence.Application.Services.Data
             _ = Task.Run(async () =>
             {
 
+
+
                 //////////////////////////////By Data Table//////////////////////////////////
 
                 //var swRead = Stopwatch.StartNew();
@@ -85,5 +88,6 @@ namespace InsuranceDecisionIntelligence.Application.Services.Data
 
             return fullPath;
         }
+
     }
 }

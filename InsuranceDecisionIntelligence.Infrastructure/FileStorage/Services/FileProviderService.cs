@@ -1,4 +1,4 @@
-﻿using InsuranceDecisionIntelligence.Application.Interfaces.Data;
+﻿using InsuranceDecisionIntelligence.Application.Interfaces.File;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;

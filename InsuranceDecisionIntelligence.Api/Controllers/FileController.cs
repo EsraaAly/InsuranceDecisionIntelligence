@@ -1,5 +1,6 @@
 ﻿using InsuranceDecisionIntelligence.Application.DTOs.Data;
 using InsuranceDecisionIntelligence.Application.Interfaces.Data;
+using InsuranceDecisionIntelligence.Application.Interfaces.File;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
@@ -11,10 +12,13 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
     public class FileController : ControllerBase
     {
         private readonly IFileService _fileService;
+        private readonly IDataQueryService _dataQueryService;
 
-        public FileController(IFileService fileService)
+
+        public FileController(IFileService fileService,IDataQueryService dataQueryService)
         {
             _fileService = fileService;
+            _dataQueryService = dataQueryService;
         }
 
         [HttpPost("Upload")]
@@ -33,19 +37,19 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
             });
         }
 
-        //[HttpGet]
-        //public async Task<IActionResult> ReadAsync([FromQuery] string filepath, [FromQuery] int page, [FromQuery] int pageSize, CancellationToken cancellationToken = default)
-        //{
-        //    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        //    var result = await _fileService.ReadFileAsync(filepath, page, pageSize, cancellationToken);
-        //    stopwatch.Stop();
-        //    return Ok(new
-        //    {
-        //        DataCount = result.Count,
-        //        Data = result,
-        //        TimeTaken = stopwatch.ElapsedMilliseconds
-        //    });
-        //}
+        [HttpGet("Read")]
+        public async Task<IActionResult> ReadAsync([FromQuery] string filepath, [FromQuery] int page, [FromQuery] int pageSize)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var result = await _dataQueryService.ReadFileAsync(filepath, page, pageSize);
+            stopwatch.Stop();
+            return Ok(new
+            {
+                TimeTaken = stopwatch.ElapsedMilliseconds,
+                DataCount = result.Count,
+                Data = result.Data
+            });
+        }
 
         //[HttpGet("ultrafast")]
         //public async Task<IActionResult> ReadUltraFastAsync([FromQuery] string filepath, [FromQuery] int page, [FromQuery] int pageSize)

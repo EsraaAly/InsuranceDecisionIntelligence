@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace InsuranceDecisionIntelligence.Application.Interfaces.Data
+namespace InsuranceDecisionIntelligence.Application.Interfaces.File
 {
     public interface IFileReader
     {

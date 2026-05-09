@@ -8,12 +8,11 @@
 
   <ItemGroup>
     <Folder Include="FileStorage\Uploads\" />
-    <Folder Include="Repositories\Interfaces\" />
-    <Folder Include="Repositories\Implementaions\" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Dapper" Version="2.1.72" />
     <PackageReference Include="ExcelDataReader.DataSet" Version="3.8.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.14">

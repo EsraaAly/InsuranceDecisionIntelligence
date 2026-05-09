@@ -1,5 +1,5 @@
 ﻿using ExcelDataReader;
-using InsuranceDecisionIntelligence.Application.Interfaces.Data;
+using InsuranceDecisionIntelligence.Application.Interfaces.File;
 using Sylvan.Data.Csv;
 using System;
 using System.Collections.Generic;

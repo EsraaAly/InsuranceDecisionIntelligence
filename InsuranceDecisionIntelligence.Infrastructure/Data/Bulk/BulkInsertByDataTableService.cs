@@ -12,7 +12,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace InsuranceDecisionIntelligence.Infrastructure.Data
+namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
 {
     public class BulkInsertByDataTableService : IBulkInsertByDataTableService
     {
