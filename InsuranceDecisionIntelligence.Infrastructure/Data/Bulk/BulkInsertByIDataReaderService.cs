@@ -25,11 +25,15 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
     {
         private readonly ConnectionSettings _connectionString;
         private readonly ILogger<BulkInsertByIDataReaderService> _logger;
+        private readonly IDatabaseMetaDataService _databaseMetaDataService;
 
-        public BulkInsertByIDataReaderService(IOptions<ConnectionSettings> options, ILogger<BulkInsertByIDataReaderService> logger)
+        public BulkInsertByIDataReaderService(IOptions<ConnectionSettings> options,
+                                              ILogger<BulkInsertByIDataReaderService> logger,
+                                              IDatabaseMetaDataService databaseMetaDataService)
         {
             _connectionString = options.Value;
             _logger = logger;
+            _databaseMetaDataService = databaseMetaDataService;
         }
 
         // ================= MAIN =================
@@ -100,11 +104,13 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
             //swConvert.Stop();
             //_logger.LogInformation("convert Table: {ms}", swConvert.ElapsedMilliseconds);
 
-            bool isExist = await TableExistsAsync(conn, "UploadLog");
+            bool isExist = await _databaseMetaDataService.TableExistsAsync( "UploadLog");
             if (!isExist)
             {
                 await CreateLogTableAsync(conn, null);
             }
+
+            await UpdateLogForOldDataAsync(fileName, conn,null);
             await InsertLogDataAsync(tableName, fileName, path, conn,null);
             
         }
@@ -118,10 +124,10 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
         {
 
            var sb = new StringBuilder();
-
-           for (int i = 0; i < columns.Count; i++)
+            sb.Append($"[TableId] int Identity(1,1)");
+            for (int i = 0; i < columns.Count; i++)
            {
-               if (i > 0) sb.Append(",");
+               sb.Append(",");
 
                string original = columns[i];
                string col = original.ToLower();
@@ -351,12 +357,27 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
         {
             var sw = Stopwatch.StartNew();
 
-            string sql = "CREATE TABLE UploadLog (Id int Identity(1,1),path NVARCHAR(250),fileName NVARCHAR(250),tableName NVARCHAR(250),)";
+            string sql = "CREATE TABLE UploadLog (Id int Identity(1,1),path NVARCHAR(250),fileName NVARCHAR(250),tableName NVARCHAR(250),UploadedAt DateTime,IsActive int)";
             using var cmd = new SqlCommand(sql, conn,transaction);
             await cmd.ExecuteNonQueryAsync();
 
             sw.Stop();
             _logger.LogInformation("Create Log Table: {ms}", sw.ElapsedMilliseconds);
+        }
+        private async Task UpdateLogForOldDataAsync(
+                         string filename,
+                         SqlConnection conn,
+                         SqlTransaction transaction)
+        {
+            var sw = Stopwatch.StartNew();
+
+
+            string sql = $"update UploadLog set IsActive = 0 where fileName = '{filename}'";
+            using var cmd = new SqlCommand(sql, conn, transaction);
+            await cmd.ExecuteNonQueryAsync();
+
+            sw.Stop();
+            _logger.LogInformation("update Log Data: {ms}", sw.ElapsedMilliseconds);
         }
         private async Task InsertLogDataAsync(
                          string tableName,
@@ -368,7 +389,7 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
             var sw = Stopwatch.StartNew();
 
             
-            string sql = $"Insert into UploadLog (path,filename,tablename) values('{path}','{filename}','{tableName}')";
+            string sql = $"Insert into UploadLog (path,filename,tablename,UploadedAt,IsActive) values('{path}','{filename}','{tableName}','{DateTime.Now}',1)";
             using var cmd = new SqlCommand(sql, conn,transaction);
             await cmd.ExecuteNonQueryAsync();
 
@@ -389,20 +410,6 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
             return cleaned;
         }
 
-        // ================= TABLE EXISTS =================
-        private async Task<bool> TableExistsAsync(SqlConnection conn, string tableName)
-        {
-            var sql = @"
-                        SELECT 1 
-                        FROM INFORMATION_SCHEMA.TABLES 
-                        WHERE TABLE_NAME = @tableName 
-                        AND TABLE_SCHEMA = 'dbo'";
-
-            using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@tableName", tableName);
-
-            var result = await cmd.ExecuteScalarAsync();
-            return result != null;
-        }
+        
     }
 }

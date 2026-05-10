@@ -9,6 +9,6 @@ namespace InsuranceDecisionIntelligence.Application.Interfaces.Repositories
 {
     public interface IPolicyRepository
     {
-        Task<ResultDto> GetDataAsync(string tableName,int page,int pageSize);
+        Task<GetFileDetails> GetDataAsync(string tableName,int page,int pageSize);
     }
 }

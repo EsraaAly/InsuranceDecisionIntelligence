@@ -9,7 +9,10 @@ namespace InsuranceDecisionIntelligence.Application.Interfaces.Data
 {
     public interface IDataQueryService
     {
-        Task<ResultDto> ReadFileAsync(string filePath, int page, int pageSize);
+        Task<GetFileDetails> ReadFileDataAsync(string filePath, int page, int pageSize);
 
+        Task<IEnumerable<GetUploadedFilesDto>> GetAllFilesAsync();
+
+        Task<GetFileDetails> GetFileDetailsByIdAsync(int id, int page=1, int pageSize=100);
     }
 }

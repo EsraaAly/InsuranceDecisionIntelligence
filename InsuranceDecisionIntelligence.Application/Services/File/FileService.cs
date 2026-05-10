@@ -33,6 +33,11 @@ namespace InsuranceDecisionIntelligence.Application.Services.File
             _bulkInsertByDataTableService = bulkInsertByDataTableService;
         }
 
+        public Task<string> GetUploadedFilesAsync()
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<string> ProcessFile(IFormFile file)
         {
             if (file == null || file.Length == 0)

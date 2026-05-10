@@ -27,19 +27,19 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Repositories
         }
 
         //by Dapper
-        public async Task<ResultDto> GetDataAsync(string tableName, int page, int pageSize)
+        public async Task<GetFileDetails> GetDataAsync(string tableName, int page, int pageSize)
         {
             var skip = (page - 1) * pageSize;
             var take = pageSize;
 
             using SqlConnection conn = new SqlConnection(_connectionString.DefaultConnection);
 
-            string query = $"Select * from [{tableName}] order by id offset {skip} rows fetch next {take} rows only";
+            string query = $"Select * from [{tableName}] order by TableId offset {skip} rows fetch next {take} rows only";
 
 
             var result = await conn.QueryAsync(query);
             var count_rows = result.Count();
-            return new ResultDto
+            return new GetFileDetails
             {
                 Data = result,
                 Count = count_rows

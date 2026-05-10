@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InsuranceDecisionIntelligen
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InsuranceDecisionIntelligence.Infrastructure", "InsuranceDecisionIntelligence.Infrastructure\InsuranceDecisionIntelligence.Infrastructure.csproj", "{3E329D9C-6190-4382-A025-54B5905BCA0E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InsuranceDecisionIntelligence.UI", "InsuranceDecisionIntelligence.UI\InsuranceDecisionIntelligence.UI.csproj", "{CC9C242F-AE13-4CAD-BABF-32AB2D985D28}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{3E329D9C-6190-4382-A025-54B5905BCA0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3E329D9C-6190-4382-A025-54B5905BCA0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3E329D9C-6190-4382-A025-54B5905BCA0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC9C242F-AE13-4CAD-BABF-32AB2D985D28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC9C242F-AE13-4CAD-BABF-32AB2D985D28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC9C242F-AE13-4CAD-BABF-32AB2D985D28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC9C242F-AE13-4CAD-BABF-32AB2D985D28}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

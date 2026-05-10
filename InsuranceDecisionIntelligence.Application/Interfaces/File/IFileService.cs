@@ -15,7 +15,7 @@ namespace InsuranceDecisionIntelligence.Application.Interfaces.File
         //Task<List<Dictionary<string, object>>> ReadFirstPageAsync(string filePath);
 
         Task<string> ProcessFile(IFormFile file);
-
+        Task<string> GetUploadedFilesAsync();
 
     }
 }
