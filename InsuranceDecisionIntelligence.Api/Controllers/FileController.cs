@@ -3,13 +3,11 @@ using InsuranceDecisionIntelligence.Application.Interfaces.Data;
 using InsuranceDecisionIntelligence.Application.Interfaces.File;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Data;
+using System.Threading.Tasks;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
-using System.Threading.Tasks;
-using Microsoft.IdentityModel.Tokens;
 
 namespace InsuranceDecisionIntelligence.Api.Controllers
 {
@@ -21,34 +19,30 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
         private readonly IDataQueryService _dataQueryService;
 
 
-        public FileController(IFileService fileService,IDataQueryService dataQueryService)
+        public FileController(IFileService fileService, IDataQueryService dataQueryService)
         {
             _fileService = fileService;
             _dataQueryService = dataQueryService;
         }
 
-        // GET /api/files
         [HttpGet("files")]
         public async Task<IActionResult> GetFiles()
         {
             var files = await _dataQueryService.GetAllFilesAsync();
-            if (files.IsNullOrEmpty())
+            if (!files.Any())
             {
                 return NotFound();
             }
             return Ok(files);
         }
 
-        // GET /api/preview
         [HttpGet("preview")]
         public async Task<IActionResult> GetPreview([FromQuery] int id, [FromQuery] int pageNo, [FromQuery] int pageSize)
         {
-            var result = await _dataQueryService.GetFileDetailsByIdAsync(id,pageNo,pageSize);
-
+            var result = await _dataQueryService.GetFileDetailsByIdAsync(id, pageNo, pageSize);
             return Ok(result);
         }
 
-        // GET /api/jobs
         [HttpGet("jobs")]
         public IActionResult GetJobs()
         {
@@ -60,7 +54,6 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
             return Ok(jobs);
         }
 
-        // GET /api/charts/line
         [HttpGet("charts/line")]
         public IActionResult GetLineChart()
         {
@@ -97,7 +90,6 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
             return Ok(lineChartData);
         }
 
-        // GET /api/charts/bar
         [HttpGet("charts/bar")]
         public IActionResult GetBarChart()
         {
@@ -133,7 +125,6 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
             return Ok(barChartData);
         }
 
-        // GET /api/charts/pie
         [HttpGet("charts/pie")]
         public IActionResult GetPieChart()
         {
@@ -150,7 +141,7 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
             return Ok(pieChartData);
         }
 
-        [HttpPost("Upload")]
+        [HttpPost("upload")]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(long.MaxValue)]
         [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
@@ -166,7 +157,7 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
             });
         }
 
-        [HttpGet("Read")]
+        [HttpGet("read")]
         public async Task<IActionResult> ReadAsync([FromQuery] string filepath, [FromQuery] int page, [FromQuery] int pageSize)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -180,48 +171,5 @@ namespace InsuranceDecisionIntelligence.Api.Controllers
             });
         }
 
-        //[HttpGet("ultrafast")]
-        //public async Task<IActionResult> ReadUltraFastAsync([FromQuery] string filepath, [FromQuery] int page, [FromQuery] int pageSize)
-        //{
-        //    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        //    var result = await _fileService.ReadFileUltraFastAsync(filepath, page, pageSize);
-        //    stopwatch.Stop();
-        //    return Ok(new
-        //    {
-        //        DataCount = result.Count,
-        //        Data = result,
-        //        TimeTaken = stopwatch.ElapsedMilliseconds
-        //    });
-        //}
-
-        //[HttpGet("partial")]
-        //public async Task<IActionResult> ReadPartialAsync([FromQuery] string filepath, [FromQuery] long startByte, [FromQuery] long endByte, [FromQuery] int page, [FromQuery] int pageSize)
-        //{
-        //    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        //    var result = await _fileService.ReadFilePartialAsync(filepath, startByte, endByte, page, pageSize);
-        //    stopwatch.Stop();
-        //    return Ok(new
-        //    {
-        //        DataCount = result.Count,
-        //        Data = result,
-        //        TimeTaken = stopwatch.ElapsedMilliseconds
-        //    });
-        //}
-
-        //[HttpGet("firstpage")]
-        //public async Task<IActionResult> ReadFirstPageAsync([FromQuery] string filepath)
-        //{
-        //    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        //    var result = await _fileService.ReadFirstPageAsync(filepath);
-        //    stopwatch.Stop();
-        //    return Ok(new
-        //    {
-        //        DataCount = result.Count,
-        //        Data = result,
-        //        TimeTaken = stopwatch.ElapsedMilliseconds
-        //    });
-        //}
-
-        
     }
 }

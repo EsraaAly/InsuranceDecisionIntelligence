@@ -18,10 +18,7 @@
   </ItemGroup>
 
 
-  <ItemGroup>
-    <ProjectReference Include="..\InsuranceDecisionIntelligence.Core\InsuranceDecisionIntelligence.Core.csproj" />
-  </ItemGroup>
-
+  
   <ItemGroup>
     <Resource Include="Resources\**\*" />
   </ItemGroup>

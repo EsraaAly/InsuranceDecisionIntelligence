@@ -21,7 +21,7 @@ namespace InsuranceDecisionIntelligence.Application.Services.File
         private readonly ILogger<FileService> _logger;
 
         public FileService(IFileProvider fileProvider,
-                           IFileReader fileReader, 
+                           IFileReader fileReader,
                            IBulkInsertByIDataReaderService bulkInsertByIDataReaderService,
                            IBulkInsertByDataTableService bulkInsertByDataTableService,
                            ILogger<FileService> logger)
@@ -29,8 +29,8 @@ namespace InsuranceDecisionIntelligence.Application.Services.File
             _fileProvider = fileProvider;
             _fileReader = fileReader;
             _bulkInsertByIDataReaderService = bulkInsertByIDataReaderService;
-            _logger = logger;
             _bulkInsertByDataTableService = bulkInsertByDataTableService;
+            _logger = logger;
         }
 
         public Task<string> GetUploadedFilesAsync()
@@ -86,7 +86,6 @@ namespace InsuranceDecisionIntelligence.Application.Services.File
 
                 swInsert.Stop();
                 _logger.LogInformation("Insert TOTAL: {ms}", swInsert.ElapsedMilliseconds);
-
             });
             //using var dataTable = await _fileReader.ReadAsDataTableAsync(fullPath);
             //await _bulkInsertService.InsertAsync(file.FileName, dataTable);

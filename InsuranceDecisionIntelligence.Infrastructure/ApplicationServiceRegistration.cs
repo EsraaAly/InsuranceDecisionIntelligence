@@ -28,9 +28,7 @@ namespace InsuranceDecisionIntelligence.Infrastructure
             services.AddScoped<IBulkInsertByDataTableService, BulkInsertByDataTableService>();
             services.AddScoped<IDatabaseMetaDataService, DatabaseMetaDataService>();
             services.AddScoped<IDataQueryService, DataQueryService>();
-            services.AddScoped<IPolicyRepository,PolicyRepository>(); 
-
-
+            services.AddScoped<IPolicyRepository, PolicyRepository>();
 
             return services;
         }

@@ -25,27 +25,51 @@ namespace InsuranceDecisionIntelligence.UI
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
         private readonly HttpClient _httpClient;
-        private Random _random = new Random();
+        private readonly Random _random = new Random();
 
-        public int CurrentPage;
-        private int TotalPage;
-        private string fileName;
-        private int selectedFileId;
-        private ObservableCollection<int> pageNumbers = new ObservableCollection<int>();
+        private int _currentPage;
+        private int _totalPage;
+        private string _fileName;
+        private int _selectedFileId;
+        private readonly ObservableCollection<int> _pageNumbers = new ObservableCollection<int>();
 
         public MainWindow()
         {
             InitializeComponent();
             DataContext = this;
             
-            // Initialize HTTP client for API calls
-            _httpClient = new HttpClient();
-            _httpClient.BaseAddress = new Uri("https://localhost:44314/"); // Change to your API URL
-            _httpClient.Timeout = TimeSpan.FromMinutes(5);
+            _httpClient = new HttpClient
+            {
+                BaseAddress = new Uri("https://localhost:44314/"),
+                Timeout = TimeSpan.FromMinutes(5)
+            };
             
-            // Load data from API (no static data)
             _ = LoadUploadedFilesFromApiAsync();
         }
+
+        #region Properties
+
+        public int CurrentPage
+        {
+            get => _currentPage;
+            set
+            {
+                _currentPage = value;
+                OnPropertyChanged(nameof(CurrentPage));
+            }
+        }
+
+        public int TotalPage
+        {
+            get => _totalPage;
+            set
+            {
+                _totalPage = value;
+                OnPropertyChanged(nameof(TotalPage));
+            }
+        }
+
+        #endregion
 
         #region Collections
 
@@ -88,11 +112,11 @@ namespace InsuranceDecisionIntelligence.UI
         }
 
         // Load data preview from API
-        private async Task PreviewFileDataFromApiAsync(string fileName,int id,int pageNo, int PageSize)
+        private async Task PreviewFileDataFromApiAsync(string fileName, int id, int pageNo, int pageSize)
         {
             DataPreviewItems.Clear();
 
-            var previewResponse = await _httpClient.GetFromJsonAsync<DataPreviewItem>($"api/File/preview?id={id}&pageNo={pageNo}&pageSize={PageSize}");
+            var previewResponse = await _httpClient.GetFromJsonAsync<DataPreviewItem>($"api/File/preview?id={id}&pageNo={pageNo}&pageSize={pageSize}");
             if (previewResponse != null)
             {
                 txtColumnsCount.Text = previewResponse.ColumnsCount.ToString();
@@ -100,10 +124,11 @@ namespace InsuranceDecisionIntelligence.UI
                 txtImportedDate.Text = "Import Date: " + previewResponse.UploadedDate.ToString();
                 txtStatus.Text = "Status: Imported";
                 txtFileName.Text = $"File Details ({fileName})";
-                TotalPage = (int.Parse(txtRowsCount.Text)/ PageSize);
+                TotalPage = int.Parse(txtRowsCount.Text) / pageSize;
+                
                 if (previewResponse.Data is not null)
                 {
-                    txtShowingRows.Text = $"Showing {((pageNo - 1) * PageSize)+1}-{PageSize* pageNo} of {previewResponse.RowsCount} rows";
+                    txtShowingRows.Text = $"Showing {((pageNo - 1) * pageSize) + 1}-{pageSize * pageNo} of {previewResponse.RowsCount} rows";
                     DG_FileData.ItemsSource = null;
                     DataTable dt = JsonConvert.DeserializeObject<DataTable>(previewResponse.Data.ToString());
                     DG_FileData.ItemsSource = dt.DefaultView;
@@ -133,8 +158,6 @@ namespace InsuranceDecisionIntelligence.UI
             catch (Exception ex)
             {
                 MessageBox.Show($"API Error: {ex.Message}\nPlease check if the API server is running.", "API Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                
-                // Load minimal fallback data
                 LoadFallbackData();
             }
         }
@@ -143,7 +166,6 @@ namespace InsuranceDecisionIntelligence.UI
         {
             try
             {
-                // Load line chart data
                 var lineChartResponse = await _httpClient.GetFromJsonAsync<ChartData>("api/File/charts/line");
                 if (lineChartResponse != null)
                 {
@@ -152,7 +174,6 @@ namespace InsuranceDecisionIntelligence.UI
                     LineChartYAxes = lineChartResponse.YAxes;
                 }
 
-                // Load bar chart data
                 var barChartResponse = await _httpClient.GetFromJsonAsync<ChartData>("api/File/charts/bar");
                 if (barChartResponse != null)
                 {
@@ -161,7 +182,6 @@ namespace InsuranceDecisionIntelligence.UI
                     BarChartYAxes = barChartResponse.YAxes;
                 }
 
-                // Load pie chart data
                 var pieChartResponse = await _httpClient.GetFromJsonAsync<PieChartDataResponse>("api/File/charts/pie");
                 if (pieChartResponse != null)
                 {
@@ -229,7 +249,6 @@ namespace InsuranceDecisionIntelligence.UI
         private async void Preview_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
-            // 2. Extract the data object from the CommandParameter
             var selectedRowData = button.CommandParameter as UploadedFile;
             if (selectedRowData != null)
             {
@@ -238,61 +257,30 @@ namespace InsuranceDecisionIntelligence.UI
                 if (txtPageNo.Text.Length == 0 || txtPageNo.Text == "0")
                 {
                     txtPageNo.Text = "1";
-
                     pageNo = 1;
                 }
                 else
                 {
                     pageNo = int.Parse(txtPageNo.Text);
-
                 }
                 pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-                fileName = selectedRowData.FileName;
-                selectedFileId = selectedRowData.Id;
-                await PreviewFileDataFromApiAsync(fileName, selectedFileId, pageNo, pageSize);
-                
+                _fileName = selectedRowData.FileName;
+                _selectedFileId = selectedRowData.Id;
+                await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, pageNo, pageSize);
             }
         }
-        private async void txtPageNo_TextChanged(object sender, TextChangedEventArgs e)
+        private void txtPageNo_TextChanged(object sender, TextChangedEventArgs e)
         {
-            CurrentPage = int.Parse(txtPageNo.Text);
-            //HighlightActivePage();
-            //UpdatePaginationButtons();
+            if (int.TryParse(txtPageNo.Text, out int result))
+            {
+                CurrentPage = result;
+            }
         }
         private void NumberValidationTextBox(object sender, TextCompositionEventArgs e)
         {
             Regex regex = new Regex("[^0-9]+");
             e.Handled = regex.IsMatch(e.Text);
         }
-
-
-        //private void UpdatePaginationButtons()
-        //{
-        //    btnFirstPage.IsEnabled = (CurrentPage > 1);
-        //    btnPreviousPage.IsEnabled = (CurrentPage > 1);
-        //    btnPreviousButtons.IsEnabled = (CurrentPage > 1);
-
-        //    btnLastPage.IsEnabled = (CurrentPage >= TotalPage);
-        //    btnNextPage.IsEnabled = (CurrentPage >= TotalPage);
-        //    btnNextButtons.IsEnabled = (CurrentPage >= TotalPage);
-        //}
-        //private void HighlightActivePage()
-        //{
-        //    Button[] pageButtons = { btnNum1, btnNum2, btnNum3, btnNum4 };
-        //    foreach (var button in pageButtons)
-        //    {
-        //        if (button.Content.ToString() == CurrentPage.ToString())
-        //        {
-        //            button.Background = (System.Windows.Media.Brush) new BrushConverter().ConvertFrom("#FF2196F3");
-        //            button.FontWeight = FontWeights.Bold;
-        //        }
-        //        else
-        //        {
-        //            button.Background = System.Windows.Media.Brushes.Transparent;
-        //            button.FontWeight = FontWeights.Normal;
-        //        }
-        //    }
-        //}
 
         private async void Refresh_Click(object sender, RoutedEventArgs e)
         {
@@ -305,23 +293,6 @@ namespace InsuranceDecisionIntelligence.UI
 
         private void LoadFallbackData()
         {
-            // Load minimal fallback data when API is not available
-            //UploadedFiles.Add(new UploadedFile { FileName = "No API Connection", UploadedAt = "N/A"});
-            
-            //DataPreviewItems.Add(new DataPreviewItem
-            //{
-            //    Column1 = "N/A",
-            //    Column2 = "N/A",
-            //    Column3 = "N/A",
-            //    Column4 = "N/A",
-            //    Column5 = "N/A",
-            //    Column30 = "N/A"
-            //});
-            
-            //BackgroundJobs.Add(new BackgroundJob { FileName = "N/A", Status = "No API", Progress = 0, StartedAt = "N/A" });
-            
-            //// Load minimal chart data
-            //LoadFallbackChartData();
         }
 
         private void HighlightCurrentPage()
@@ -429,7 +400,7 @@ namespace InsuranceDecisionIntelligence.UI
 
         private async void combPageSize_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            int pageSize = int.Parse(((ComboBoxItem) combPageSize.SelectedItem).Content.ToString());
+            int pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
             txtPageNo.Text = "1";
             if (txtRowsCount.Text.Length == 0)
             {
@@ -438,51 +409,20 @@ namespace InsuranceDecisionIntelligence.UI
             else
             {
                 TotalPage = (int.Parse(txtRowsCount.Text) / pageSize);
-
             }
 
-            if (fileName != null && selectedFileId != 0)
+            if (_fileName != null && _selectedFileId != 0)
             {
-                await PreviewFileDataFromApiAsync(fileName, selectedFileId, CurrentPage, pageSize);
+                await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, pageSize);
             }
         }
-
-        //private void btnPreviousButtons_Click(object sender, RoutedEventArgs e)
-        //{
-        //    Button[] pageButtons = { btnNum1, btnNum2, btnNum3, btnNum4 };
-        //    // btnNum1, btnNum2, btnNum3, btnNum4
-        //    //5        6          7       8
-        //    //1         2           3       4
-
-        //    if ((int) btnNum1.Content == 4)
-        //    {
-
-        //    }
-        //    btnNum4.Content = btnNum1.Content;
-        //    //
-        //    foreach (var button in pageButtons)
-        //    {
-        //        if (button.Content.ToString() == CurrentPage.ToString())
-        //        {
-
-        //        }
-        //        else
-        //        {
-
-        //        }
-        //    }
-
-        //    HighlightActivePage();
-        //    UpdatePaginationButtons();
-        //}
 
         private void btnNextButtons_Click(object sender, RoutedEventArgs e)
         {
-
         }
         private async void RefreshUI()
         {
-            pageNumbers.Clear();
+            _pageNumbers.Clear();
 
             btnFirst.IsEnabled = btnPrev.IsEnabled = (CurrentPage > 1);
             btnNext.IsEnabled = btnLast.IsEnabled = (CurrentPage < TotalPage);
@@ -493,57 +433,51 @@ namespace InsuranceDecisionIntelligence.UI
 
             if (end == TotalPage) start = Math.Max(1, end - 4);
 
-            for (int i = start; i <= end; i++) pageNumbers.Add(i);
+            for (int i = start; i <= end; i++) _pageNumbers.Add(i);
 
-            pagesControl.ItemsSource = pageNumbers;
+            pagesControl.ItemsSource = _pageNumbers;
 
             int pageNo = 0;
             int pageSize = 0;
             if (txtPageNo.Text.Length == 0 || txtPageNo.Text == "0")
             {
                 txtPageNo.Text = "1";
-
                 pageNo = 1;
             }
             else
             {
                 pageNo = int.Parse(txtPageNo.Text);
-
             }
             pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
 
             HighlightCurrentPage();
         }
-        private async void First_Click(object sender, RoutedEventArgs e) 
-        { 
+        private async void First_Click(object sender, RoutedEventArgs e)
+        {
             CurrentPage = 1;
             int pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-
-            await PreviewFileDataFromApiAsync(fileName, selectedFileId, CurrentPage, pageSize);
+            await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, pageSize);
             txtPageNo.Text = CurrentPage.ToString();
         }
-        private async void Prev_Click(object sender, RoutedEventArgs e) 
+        private async void Prev_Click(object sender, RoutedEventArgs e)
         {
             CurrentPage--;
             int pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-
-            await PreviewFileDataFromApiAsync(fileName, selectedFileId, CurrentPage, pageSize);
+            await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, pageSize);
             txtPageNo.Text = CurrentPage.ToString();
         }
         private async void Next_Click(object sender, RoutedEventArgs e)
         {
             CurrentPage++;
             int pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-
-            await PreviewFileDataFromApiAsync(fileName, selectedFileId, CurrentPage, pageSize);
-            txtPageNo.Text = CurrentPage.ToString(); 
+            await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, pageSize);
+            txtPageNo.Text = CurrentPage.ToString();
         }
-        private async void Last_Click(object sender, RoutedEventArgs e) 
+        private async void Last_Click(object sender, RoutedEventArgs e)
         {
             CurrentPage = TotalPage;
             int pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-
-            await PreviewFileDataFromApiAsync(fileName, selectedFileId, CurrentPage, pageSize);
+            await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, pageSize);
             txtPageNo.Text = CurrentPage.ToString();
         }
 
@@ -551,35 +485,18 @@ namespace InsuranceDecisionIntelligence.UI
         {
             var btn = sender as Button;
 
-            if(CurrentPage!= (int)btn.Content)
+            if (CurrentPage != (int)btn.Content)
             {
                 CurrentPage = (int)btn.Content;
                 int pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-                await PreviewFileDataFromApiAsync(fileName, selectedFileId, CurrentPage, pageSize);
+                await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, pageSize);
                 txtPageNo.Text = CurrentPage.ToString();
-            }       
-
+            }
         }
 
         private void Button_Loaded(object sender, RoutedEventArgs e)
         {
-
         }
-
-        //private void UpdatePagination()
-        //{
-        //    pageNumbers.Clear();
-        //    int maxButtons = 5;
-        //    int start = Math.Max(1,CurrentPage - 1);
-        //    int end = Math.Min(TotalPage, start + maxButtons - 1);
-
-        //    if (end == TotalPage) start = Math.Max(1, end - maxButtons + 1);
-
-        //    for (int i = start;i<=end;i++)
-        //    {
-        //        pageNumbers.Add(i);
-        //    }
-        //}
 
     }
 
