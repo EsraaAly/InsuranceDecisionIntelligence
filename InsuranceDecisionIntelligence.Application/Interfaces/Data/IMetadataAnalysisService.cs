@@ -8,10 +8,8 @@ using System.Threading.Tasks;
 
 namespace InsuranceDecisionIntelligence.Application.Interfaces.Data
 {
-    public interface IDataQueryService
+    public interface IMetadataAnalysisService
     {
-        Task<Result<IEnumerable<GetUploadedFilesDto>>> GetAllFilesAsync();
-
-        Task<Result<GetDataResponse>> GetFileDetailsByIdAsync(int id, int page=1, int pageSize=100);
+        Task<Result<IEnumerable<dynamic>>> AnalyzeMetadataAsync(ChartDataRequestDto dto);
     }
 }

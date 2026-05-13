@@ -1,4 +1,6 @@
-﻿using LiveChartsCore;
+﻿using InsuranceDecisionIntelligence.UI.Common;
+using InsuranceDecisionIntelligence.UI.Services;
+using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using Microsoft.Win32;
@@ -9,8 +11,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Drawing.Printing;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
@@ -24,49 +27,54 @@ namespace InsuranceDecisionIntelligence.UI
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private readonly HttpClient _httpClient;
-        private readonly Random _random = new Random();
+        #region Fields
+
+        private readonly ApiService _apiService;
+        private readonly System.Timers.Timer _refreshTimer;
+        private readonly ObservableCollection<int> _pageNumbers = new();
 
         private int _currentPage;
         private int _totalPage;
+        private int _totalRows;
+        private int _totalColumns;
         private string _fileName;
         private int _selectedFileId;
-        private readonly ObservableCollection<int> _pageNumbers = new ObservableCollection<int>();
+        private TableMetadataDto? _currentTableMetadata;
+        private DataTable _dt;
+
+        #endregion
+
+        #region Constructor
 
         public MainWindow()
         {
             InitializeComponent();
             DataContext = this;
-            
-            _httpClient = new HttpClient
+
+            var httpClient = new HttpClient
             {
-                BaseAddress = new Uri("https://localhost:44314/"),
+                BaseAddress = new Uri("https://localhost:7039/"),
                 Timeout = TimeSpan.FromMinutes(5)
             };
-            
+            _apiService = new ApiService(httpClient);
+
             _ = LoadUploadedFilesFromApiAsync();
         }
+
+        #endregion
 
         #region Properties
 
         public int CurrentPage
         {
             get => _currentPage;
-            set
-            {
-                _currentPage = value;
-                OnPropertyChanged(nameof(CurrentPage));
-            }
+            set { _currentPage = value; OnPropertyChanged(nameof(CurrentPage)); }
         }
 
         public int TotalPage
         {
             get => _totalPage;
-            set
-            {
-                _totalPage = value;
-                OnPropertyChanged(nameof(TotalPage));
-            }
+            set { _totalPage = value; OnPropertyChanged(nameof(TotalPage)); }
         }
 
         #endregion
@@ -74,131 +82,33 @@ namespace InsuranceDecisionIntelligence.UI
         #region Collections
 
         public ObservableCollection<UploadedFile> UploadedFiles { get; set; } = new();
-        public ObservableCollection<dynamic> DataPreviewItems { get; set; } = new();
         public ObservableCollection<BackgroundJob> BackgroundJobs { get; set; } = new();
+        public ObservableCollection<ColumnMetadataDto> CategoricalColumns { get; set; } = new();
+        public ObservableCollection<ColumnMetadataDto> NumericalColumns { get; set; } = new();
 
         #endregion
 
-        #region Chart Data
-
-        public ISeries[] LineChartData { get; set; } = Array.Empty<ISeries>();
-        public Axis[] LineChartXAxes { get; set; } = Array.Empty<Axis>();
-        public Axis[] LineChartYAxes { get; set; } = Array.Empty<Axis>();
-
-        public ISeries[] BarChartData { get; set; } = Array.Empty<ISeries>();
-        public Axis[] BarChartXAxes { get; set; } = Array.Empty<Axis>();
-        public Axis[] BarChartYAxes { get; set; } = Array.Empty<Axis>();
-
-        public ISeries[] PieChartData { get; set; } = Array.Empty<ISeries>();
-
-        #endregion
-
-        #region API Methods
-
-        // Load uploaded files from API
+        #region File Methods
 
         private async Task LoadUploadedFilesFromApiAsync()
         {
-            UploadedFiles.Clear();
-
-            var filesResponse = await _httpClient.GetFromJsonAsync<List<UploadedFile>>("api/File/files");
-            if (filesResponse != null)
+            try
             {
-                foreach (var file in filesResponse)
-                {
-                    UploadedFiles.Add(file);
-                }
-            }
-        }
-
-        // Load data preview from API
-        private async Task PreviewFileDataFromApiAsync(string fileName, int id, int pageNo, int pageSize)
-        {
-            DataPreviewItems.Clear();
-
-            var previewResponse = await _httpClient.GetFromJsonAsync<DataPreviewItem>($"api/File/preview?id={id}&pageNo={pageNo}&pageSize={pageSize}");
-            if (previewResponse != null)
-            {
-                txtColumnsCount.Text = previewResponse.ColumnsCount.ToString();
-                txtRowsCount.Text = previewResponse.RowsCount.ToString();
-                txtImportedDate.Text = "Import Date: " + previewResponse.UploadedDate.ToString();
-                txtStatus.Text = "Status: Imported";
-                txtFileName.Text = $"File Details ({fileName})";
-                TotalPage = int.Parse(txtRowsCount.Text) / pageSize;
+                var result = await _apiService.GetFilesAsync();
                 
-                if (previewResponse.Data is not null)
-                {
-                    txtShowingRows.Text = $"Showing {((pageNo - 1) * pageSize) + 1}-{pageSize * pageNo} of {previewResponse.RowsCount} rows";
-                    DG_FileData.ItemsSource = null;
-                    DataTable dt = JsonConvert.DeserializeObject<DataTable>(previewResponse.Data.ToString());
-                    DG_FileData.ItemsSource = dt.DefaultView;
-                }
-                RefreshUI();
-            }
-        }
-        private async Task LoadDataFromApiAsync()
-        {
-            try
-            {
-                BackgroundJobs.Clear();
-
-                //// Load background jobs from API
-                //var jobsResponse = await _httpClient.GetFromJsonAsync<List<BackgroundJob>>("api/File/jobs");
-                //if (jobsResponse != null)
-                //{
-                //    foreach (var job in jobsResponse)
-                //    {
-                //        BackgroundJobs.Add(job);
-                //    }
-                //}
-
-                //// Load chart data from API
-                //await LoadChartDataFromApiAsync();
+                result.Match(
+                    onSuccess: files =>
+                    {
+                        UploadedFiles.Clear();
+                        foreach (var file in files)
+                            UploadedFiles.Add(file);
+                    },
+                    onFailure: error => ErrorHandlingService.ShowError(error, "Failed to load files")
+                );
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"API Error: {ex.Message}\nPlease check if the API server is running.", "API Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                LoadFallbackData();
-            }
-        }
-
-        private async Task LoadChartDataFromApiAsync()
-        {
-            try
-            {
-                var lineChartResponse = await _httpClient.GetFromJsonAsync<ChartData>("api/File/charts/line");
-                if (lineChartResponse != null)
-                {
-                    LineChartData = lineChartResponse.Series;
-                    LineChartXAxes = lineChartResponse.XAxes;
-                    LineChartYAxes = lineChartResponse.YAxes;
-                }
-
-                var barChartResponse = await _httpClient.GetFromJsonAsync<ChartData>("api/File/charts/bar");
-                if (barChartResponse != null)
-                {
-                    BarChartData = barChartResponse.Series;
-                    BarChartXAxes = barChartResponse.XAxes;
-                    BarChartYAxes = barChartResponse.YAxes;
-                }
-
-                var pieChartResponse = await _httpClient.GetFromJsonAsync<PieChartDataResponse>("api/File/charts/pie");
-                if (pieChartResponse != null)
-                {
-                    PieChartData = pieChartResponse.Series;
-                }
-
-                OnPropertyChanged(nameof(LineChartData));
-                OnPropertyChanged(nameof(LineChartXAxes));
-                OnPropertyChanged(nameof(LineChartYAxes));
-                OnPropertyChanged(nameof(BarChartData));
-                OnPropertyChanged(nameof(BarChartXAxes));
-                OnPropertyChanged(nameof(BarChartYAxes));
-                OnPropertyChanged(nameof(PieChartData));
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Chart data loading error: {ex.Message}", "API Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ErrorHandlingService.ShowError(UIError.InternalError("Failed to load files", ex.Message), "Failed to load files");
             }
         }
 
@@ -206,210 +116,327 @@ namespace InsuranceDecisionIntelligence.UI
         {
             try
             {
-                var formContent = new MultipartFormDataContent();
-                var fileContent = new ByteArrayContent(System.IO.File.ReadAllBytes(filePath));
-                formContent.Add(fileContent, "file", System.IO.Path.GetFileName(filePath));
-
-                var response = await _httpClient.PostAsync("api/File/upload", formContent);
+                var result = await _apiService.UploadFileAsync(filePath);
                 
-                if (response.IsSuccessStatusCode)
-                {
-                    MessageBox.Show("File uploaded successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                    //await LoadUploadedFilesFromApiAsync(); // Refresh all data
-                }
-                else
-                {
-                    MessageBox.Show($"Upload failed: {response.StatusCode}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                result.Match(
+                    onSuccess: response =>
+                    {
+                        ErrorHandlingService.ShowSuccess("File uploaded successfully!");
+                        _ = LoadUploadedFilesFromApiAsync();
+                    },
+                    onFailure: error => ErrorHandlingService.ShowError(error, "Upload Failed")
+                );
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Upload error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ErrorHandlingService.ShowError(UIError.FileError("Upload failed", ex.Message), "Upload Error");
+            }
+        }
+
+        private async Task PreviewFileDataFromApiAsync(string fileName, int id, int pageNo, int pageSize)
+        {
+            try
+            {
+                var result = await _apiService.GetFilePreviewAsync(id, pageNo, pageSize);
+                
+                result.Match(
+                    onSuccess: preview =>
+                    {
+                        _totalRows = preview.RowsCount;
+                        _totalColumns = preview.ColumnsCount;
+
+                        txtColumnsCount.Text = $"Total Rows: {preview.ColumnsCount}";
+                        txtRowsCount.Text = $"Total Columns: {preview.RowsCount}";
+                        txtImportedDate.Text = $"Import Date: {preview.UploadedDate}";
+                        txtStatus.Text = "Status: Imported";
+                        txtFileName.Text = $"File Details ({fileName})";
+                        TotalPage = preview.RowsCount / pageSize;
+
+                        if (preview.Data is not null)
+                        {
+                            txtShowingRows.Text = $"Showing {((pageNo - 1) * pageSize) + 1}-{pageSize * pageNo} of {preview.RowsCount} rows";
+                            DG_FileData.ItemsSource = null;
+
+                            _dt = JsonConvert.DeserializeObject<DataTable>(preview.Data.ToString());
+
+                            if (_dt.Columns.Contains("TableId"))
+                                _dt.Columns["TableId"].ColumnName = "Row_No";
+
+                            DG_FileData.ItemsSource = _dt.DefaultView;
+                        }
+
+                        RefreshPagination();
+                        
+                        //if (_dt.Rows.Count > 0)
+                        //    _ = LoadTableMetadataAsync(_dt);
+                    },
+                    onFailure: error => ErrorHandlingService.ShowError(error, "Preview Error")
+                );
+            }
+            catch (Exception ex)
+            {
+                ErrorHandlingService.ShowError(UIError.InternalError("Preview failed", ex.Message), "Preview Error");
             }
         }
 
         #endregion
 
-        #region Event Handlers
+        #region Metadata & Chart Methods
 
-        private async void BrowseFile_Click(object sender, RoutedEventArgs e)
+        private void LoadTableMetadataAsync(DataTable dt)
         {
-            var openFileDialog = new OpenFileDialog
-            {
-                Filter = "CSV files (*.csv)|*.csv",
-                Title = "Select CSV File"
-            };
+            //try
+            //{
+            //    txtChartStatus.Text = "Loading column metadata...";
 
-            if (openFileDialog.ShowDialog() == true)
-            {
-                await UploadFileAsync(openFileDialog.FileName);
-            }
+            //    CategoricalColumns.Clear();
+            //    NumericalColumns.Clear();
+
+            //    foreach (DataColumn col in dt.Columns)
+            //    {
+            //        if (col.ColumnName == "Row_No") continue;
+
+            //        var metadata = new ColumnMetadataDto
+            //        {
+            //            ColumnName = col.ColumnName,
+            //            DataType = col.DataType.Name,
+            //            ColumnType = GetColumnType(col, dt),
+            //            UniqueCount = dt.DefaultView.ToTable(true, col.ColumnName).Rows.Count,
+            //            SampleValue = dt.Rows.Count > 0 ? dt.Rows[0][col] : null
+            //        };
+
+            //        if (metadata.ColumnType == ColumnType.Categorical)
+            //            CategoricalColumns.Add(metadata);
+            //        else if (metadata.ColumnType == ColumnType.Numerical)
+            //            NumericalColumns.Add(metadata);
+            //    }
+
+            //    _currentTableMetadata = new TableMetadataDto
+            //    {
+            //        FileId = _selectedFileId,
+            //        TotalRows = dt.Rows.Count,
+            //        CategoricalColumns = CategoricalColumns.ToList(),
+            //        NumericalColumns = NumericalColumns.ToList()
+            //    };
+
+            //    ComboBox_X.ItemsSource = CategoricalColumns;
+            //    ComboBox_Y.ItemsSource = NumericalColumns;
+
+            //    txtChartStatus.Text = $"Loaded {CategoricalColumns.Count} categorical and {NumericalColumns.Count} numerical columns. Select columns to visualize.";
+            //    return Task.CompletedTask;
+            //}
+            //catch (Exception ex)
+            //{
+            //    txtChartStatus.Text = "Error loading metadata";
+            //    ErrorHandlingService.ShowError(UIError.InternalError("Failed to load metadata", ex.Message), "Metadata Error");
+            //    return Task.CompletedTask;
+            //}
         }
 
-        private async void Preview_Click(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var selectedRowData = button.CommandParameter as UploadedFile;
-            if (selectedRowData != null)
-            {
-                int pageNo = 0;
-                int pageSize = 0;
-                if (txtPageNo.Text.Length == 0 || txtPageNo.Text == "0")
-                {
-                    txtPageNo.Text = "1";
-                    pageNo = 1;
-                }
-                else
-                {
-                    pageNo = int.Parse(txtPageNo.Text);
-                }
-                pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-                _fileName = selectedRowData.FileName;
-                _selectedFileId = selectedRowData.Id;
-                await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, pageNo, pageSize);
-            }
-        }
-        private void txtPageNo_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (int.TryParse(txtPageNo.Text, out int result))
-            {
-                CurrentPage = result;
-            }
-        }
-        private void NumberValidationTextBox(object sender, TextCompositionEventArgs e)
-        {
-            Regex regex = new Regex("[^0-9]+");
-            e.Handled = regex.IsMatch(e.Text);
-        }
+        
 
-        private async void Refresh_Click(object sender, RoutedEventArgs e)
-        {
-            await LoadUploadedFilesFromApiAsync();
-        }
+        //private async Task AnalyzeMetadataAsync()
+        //{
+        //    if (_currentTableMetadata == null)
+        //    {
+        //        ErrorHandlingService.ShowError(UIError.ValidationError("No file selected for metadata analysis"), "Metadata Analysis Error");
+        //        return;
+        //    }
+
+        //    try
+        //    {
+        //        ChartLoadingBar.Visibility = Visibility.Visible;
+        //        txtChartStatus.Text = "Analyzing metadata...";
+
+        //        var request = new ChartDataRequestDto
+        //        {
+        //            FileId = _currentTableMetadata.FileId,
+        //            XColumn = ComboBox_X.SelectedValue?.ToString(),
+        //            YColumn = ComboBox_Y.SelectedValue?.ToString(),
+        //            Aggregation = (ComboBox_Aggregation.SelectedItem as ComboBoxItem)?.Content.ToString(),
+        //            Top10Only = CheckBox_Top10.IsChecked == true
+        //        };
+
+        //        var result = await _apiService.GetChartDataAsync(request);
+                
+        //        result.Match(
+        //            onSuccess: chartData =>
+        //            {
+        //                if (chartData?.DataPoints == null) return;
+
+        //                txtChartStatus.Text = $"Chart generated — {chartData.DataPoints.Count} data points.";
+        //                txtDynamicChartTitle.Text = chartData.ChartTitle;
+
+        //                var values = chartData.DataPoints.Select(d => d.Value).ToArray();
+        //                var labels = chartData.DataPoints.Select(d => d.Label).ToArray();
+
+        //                if (BtnPie.IsChecked == true)
+        //                {
+        //                    BindPieChart(chartData.DataPoints);
+        //                }
+        //                else
+        //                {
+        //                    BindCartesianChart(values, labels, chartData.XLabel, chartData.YLabel);
+        //                }
+        //            },
+        //            onFailure: error => ErrorHandlingService.ShowError(error, "Metadata Analysis Error")
+        //        );
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        txtChartStatus.Text = "Error analyzing metadata";
+        //        ErrorHandlingService.ShowError(UIError.InternalError("Metadata analysis failed", ex.Message), "Metadata Analysis Error");
+        //    }
+        //    finally
+        //    {
+        //        ChartLoadingBar.Visibility = Visibility.Collapsed;
+        //    }
+        //}
+
+        //private void BindCartesianChart(double[] values, string[] labels, string xLabel, string yLabel)
+        //{
+        //    MainCartesianChart.Visibility = Visibility.Visible;
+        //    MainPieChart.Visibility = Visibility.Collapsed;
+
+        //    ISeries series = BtnLine.IsChecked == true
+        //        ? new LineSeries<double> { Values = values, Name = yLabel }
+        //        : new ColumnSeries<double> { Values = values, Name = yLabel };
+
+        //    MainCartesianChart.Series = new[] { series };
+        //    MainCartesianChart.XAxes = new[] { new Axis { Labels = labels, Name = xLabel } };
+        //}
+
+        //private void BindPieChart(List<ChartDataPoint> dataPoints)
+        //{
+        //    MainCartesianChart.Visibility = Visibility.Collapsed;
+        //    MainPieChart.Visibility = Visibility.Visible;
+
+        //    MainPieChart.Series = dataPoints.Select(d => new PieSeries<double>
+        //    {
+        //        Values = new[] { d.Value },
+        //        Name = d.Label
+        //    }).ToArray();
+        //}
+
+
 
         #endregion
 
-        #region Fallback Data
+        #region Pagination
 
-        private void LoadFallbackData()
+        private void RefreshPagination()
         {
+            _pageNumbers.Clear();
+
+            btnFirst.IsEnabled = btnPrev.IsEnabled = CurrentPage > 1;
+            btnNext.IsEnabled = btnLast.IsEnabled = CurrentPage < TotalPage;
+
+            int start = Math.Max(1, CurrentPage - 2);
+            int end = Math.Min(TotalPage, start + 4);
+            if (end == TotalPage) start = Math.Max(1, end - 4);
+
+            for (int i = start; i <= end; i++) _pageNumbers.Add(i);
+
+            pagesControl.ItemsSource = _pageNumbers;
+            HighlightCurrentPage();
         }
 
+       
         private void HighlightCurrentPage()
         {
-            // بنستنى الـ UI يرسم الزراير
             this.Dispatcher.InvokeAsync(() =>
             {
                 foreach (var item in pagesControl.Items)
                 {
-                    // بنجيب الحاوية (Container) بتاعة الزرار
                     var container = pagesControl.ItemContainerGenerator.ContainerFromItem(item) as ContentPresenter;
-                    if (container != null)
-                    {
-                        var btn = VisualTreeHelper.GetChild(container, 0) as Button;
-                        if (btn != null)
-                        {
-                            if (btn.Content.ToString() == CurrentPage.ToString())
-                            {
-                                btn.Background = (System.Windows.Media.Brush) new BrushConverter().ConvertFromString("#007ACC");
-                                btn.Foreground = System.Windows.Media.Brushes.White;
-                            }
-                            else
-                            {
-                                btn.Background = System.Windows.Media.Brushes.White;
-                                btn.Foreground = System.Windows.Media.Brushes.Black;
-                            }
-                        }
-                    }
+                    if (container == null) continue;
+
+                    var btn = VisualTreeHelper.GetChild(container, 0) as Button;
+                    if (btn == null) continue;
+
+                    bool isActive = btn.Content.ToString() == CurrentPage.ToString();
+                    btn.Background = isActive
+                        ? (Brush)new BrushConverter().ConvertFromString("#007ACC")
+                        : Brushes.White;
+                    btn.Foreground = isActive ? Brushes.White : Brushes.Black;
                 }
             }, System.Windows.Threading.DispatcherPriority.Render);
         }
 
-        private void LoadFallbackChartData()
+        private static ColumnType GetColumnType(DataColumn col, DataTable dt)
         {
-            // Minimal fallback chart data
-            LineChartData = new ISeries[]
-            {
-                new LineSeries<double>
-                {
-                    Values = new double[] { 0 },
-                    Name = "No Data",
-                    Stroke = new SolidColorPaint(SKColors.Gray),
-                    Fill = null,
-                    GeometrySize = 8
-                }
-            };
+            // Get up to 50 non-null sample values
+            var samples = dt.AsEnumerable()
+                            .Select(r => r[col]?.ToString()?.Trim())
+                            .Where(v => !string.IsNullOrEmpty(v))
+                            .Take(50)
+                            .ToList();
 
-            LineChartXAxes = new Axis[] { new Axis { Labels = new[] { "No Data" } } };
-            LineChartYAxes = new Axis[] { new Axis { MinLimit = 0 } };
+            if (samples.Count == 0) return ColumnType.Categorical;
 
-            BarChartData = new ISeries[]
-            {
-                new ColumnSeries<double>
-                {
-                    Values = new double[] { 0 },
-                    Name = "No Data",
-                    Stroke = new SolidColorPaint(SKColors.Gray),
-                    Fill = new SolidColorPaint(SKColors.Gray)
-                }
-            };
+            int total = samples.Count;
 
-            BarChartXAxes = new Axis[] { new Axis { Labels = new[] { "No Data" } } };
-            BarChartYAxes = new Axis[] { new Axis { MinLimit = 0 } };
+            // Check Boolean
+            var boolValues = new HashSet<string> { "true", "false", "yes", "no", "0", "1" };
+            if (samples.All(v => boolValues.Contains(v.ToLower())))
+                return ColumnType.Boolean;
 
-            PieChartData = new ISeries[]
-            {
-                new PieSeries<double> { Values = new double[] { 100 }, Name = "No Data", Fill = new SolidColorPaint(SKColors.Gray) }
-            };
+            // Check DateTime
+            int dateCount = samples.Count(v => DateTime.TryParse(v, out _));
+            if ((double)dateCount / total >= 0.8)
+                return ColumnType.Date;
+
+            // Check Numerical
+            int numCount = samples.Count(v => double.TryParse(v, out _));
+            if ((double)numCount / total >= 0.8)
+                return ColumnType.Numerical;
+
+            // Check Categorical (low unique values = categorical)
+            int uniqueCount = samples.Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            if ((double)uniqueCount / total <= 0.5)
+                return ColumnType.Categorical;
+
+            // Otherwise it's free text
+            return ColumnType.Text;
         }
+
+        private int GetPageSize() =>
+            int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
 
         #endregion
 
-        #region Data Models for API
+        #region Event Handlers — File
 
-        public class ChartData
+        private async void BrowseFile_Click(object sender, RoutedEventArgs e)
         {
-            public ISeries[] Series { get; set; } = Array.Empty<ISeries>();
-            public Axis[] XAxes { get; set; } = Array.Empty<Axis>();
-            public Axis[] YAxes { get; set; } = Array.Empty<Axis>();
+            var dialog = new OpenFileDialog { Filter = "CSV files (*.csv)|*.csv", Title = "Select CSV File" };
+            if (dialog.ShowDialog() == true)
+                await UploadFileAsync(dialog.FileName);
         }
 
-        public class PieChartDataResponse
+        private async void Refresh_Click(object sender, RoutedEventArgs e) =>
+            await LoadUploadedFilesFromApiAsync();
+
+        private async void Preview_Click(object sender, RoutedEventArgs e)
         {
-            public ISeries[] Series { get; set; } = Array.Empty<ISeries>();
-        }
+            if (sender is not Button btn || btn.CommandParameter is not UploadedFile file) return;
 
-        #endregion
+            if (string.IsNullOrEmpty(txtPageNo.Text) || txtPageNo.Text == "0")
+                txtPageNo.Text = "1";
 
-        #region INotifyPropertyChanged
+            _fileName = file.FileName;
+            _selectedFileId = file.Id;
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        #endregion
-
-        protected override void OnClosed(EventArgs e)
-        {
-            _httpClient?.Dispose();
-            base.OnClosed(e);
+            await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, GetPageSize());
+            //if (_dt.Rows.Count > 0)
+            //        await LoadTableMetadataAsync(_dt);
         }
 
         private async void combPageSize_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            int pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
+            int pageSize = GetPageSize();
             txtPageNo.Text = "1";
-            if (txtRowsCount.Text.Length == 0)
-            {
-                TotalPage = 0;
-            }
-            else
-            {
-                TotalPage = (int.Parse(txtRowsCount.Text) / pageSize);
-            }
+            TotalPage = _totalRows / pageSize;
 
             if (_fileName != null && _selectedFileId != 0)
             {
@@ -417,41 +444,19 @@ namespace InsuranceDecisionIntelligence.UI
             }
         }
 
-        private void btnNextButtons_Click(object sender, RoutedEventArgs e)
+        private void txtPageNo_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (int.TryParse(txtPageNo.Text, out int result))
+                CurrentPage = result;
         }
-        private async void RefreshUI()
-        {
-            _pageNumbers.Clear();
 
-            btnFirst.IsEnabled = btnPrev.IsEnabled = (CurrentPage > 1);
-            btnNext.IsEnabled = btnLast.IsEnabled = (CurrentPage < TotalPage);
-            int maxButtons = 5;
-            
-            int start = Math.Max(1, CurrentPage - 2);
-            int end = Math.Min(TotalPage, start + maxButtons - 1);
+        private void NumberValidationTextBox(object sender, TextCompositionEventArgs e) =>
+            e.Handled = new Regex("[^0-9]+").IsMatch(e.Text);
 
-            if (end == TotalPage) start = Math.Max(1, end - 4);
+        #endregion
 
-            for (int i = start; i <= end; i++) _pageNumbers.Add(i);
+        #region Event Handlers — Pagination
 
-            pagesControl.ItemsSource = _pageNumbers;
-
-            int pageNo = 0;
-            int pageSize = 0;
-            if (txtPageNo.Text.Length == 0 || txtPageNo.Text == "0")
-            {
-                txtPageNo.Text = "1";
-                pageNo = 1;
-            }
-            else
-            {
-                pageNo = int.Parse(txtPageNo.Text);
-            }
-            pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-
-            HighlightCurrentPage();
-        }
         private async void First_Click(object sender, RoutedEventArgs e)
         {
             CurrentPage = 1;
@@ -483,24 +488,89 @@ namespace InsuranceDecisionIntelligence.UI
 
         private async void PageNumber_Click(object sender, RoutedEventArgs e)
         {
-            var btn = sender as Button;
-
-            if (CurrentPage != (int)btn.Content)
-            {
-                CurrentPage = (int)btn.Content;
-                int pageSize = int.Parse(((ComboBoxItem)combPageSize.SelectedItem).Content.ToString());
-                await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, pageSize);
-                txtPageNo.Text = CurrentPage.ToString();
-            }
+            if (sender is not Button btn || CurrentPage == (int)btn.Content) return;
+            CurrentPage = (int)btn.Content;
+            txtPageNo.Text = CurrentPage.ToString();
+            await PreviewFileDataFromApiAsync(_fileName, _selectedFileId, CurrentPage, GetPageSize());
         }
 
-        private void Button_Loaded(object sender, RoutedEventArgs e)
+        #endregion
+
+        #region Event Handlers — Charts
+
+        //private async void RefreshCharts_Click(object sender, RoutedEventArgs e)
+        //{
+        //    RefreshChartsBtn.IsEnabled = false;
+        //    RefreshChartsBtn.Content = "Refreshing...";
+        //    try { await AnalyzeMetadataAsync(); }
+        //    finally
+        //    {
+        //        RefreshChartsBtn.IsEnabled = true;
+        //        RefreshChartsBtn.Content = "Refresh Charts";
+        //    }
+        //}
+
+        //private async void ChartType_Click(object sender, RoutedEventArgs e)
+        //{
+        //    await AnalyzeMetadataAsync();
+        //}
+
+        //private async void ComboBox_X_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        //{
+        //    await AnalyzeMetadataAsync();
+        //}
+
+        //private async void ComboBox_Y_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        //{
+        //    await AnalyzeMetadataAsync();
+        //}
+
+        //private async void ComboBox_Aggregation_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        //{
+        //    await AnalyzeMetadataAsync();
+        //}
+
+        //private async void CheckBox_Top10_Changed(object sender, RoutedEventArgs e)
+        //{
+        //    await AnalyzeMetadataAsync();
+        //}
+
+        //private async void AnalyzeMetadata_Click(object sender, RoutedEventArgs e)
+        //{
+        //    await AnalyzeMetadataAsync();
+        //}
+
+        #endregion
+
+        #region Helpers
+
+        // Note: ErrorHandlingService is now used for all error display
+
+        #endregion
+
+        #region INotifyPropertyChanged
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected virtual void OnPropertyChanged(string propertyName) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        #endregion
+
+        #region Lifecycle
+
+        protected override void OnClosed(EventArgs e)
         {
+            _refreshTimer?.Stop();
+            _refreshTimer?.Dispose();
+            _apiService?.Dispose();
+            base.OnClosed(e);
         }
 
+        #endregion
     }
 
-    // Data Models
+    #region Data Models
+
     public class UploadedFile
     {
         public int Id { get; set; }
@@ -511,7 +581,6 @@ namespace InsuranceDecisionIntelligence.UI
     public class DataPreviewItem
     {
         public dynamic Data { get; set; }
-        public int Count { get; set; }
         public int RowsCount { get; set; }
         public int ColumnsCount { get; set; }
         public DateTime UploadedDate { get; set; }
@@ -524,4 +593,50 @@ namespace InsuranceDecisionIntelligence.UI
         public int Progress { get; set; }
         public string StartedAt { get; set; } = string.Empty;
     }
+
+    public class ColumnMetadataDto
+    {
+        public string ColumnName { get; set; } = string.Empty;
+        public string DataType { get; set; } = string.Empty;
+        public ColumnType ColumnType { get; set; }
+        public int UniqueCount { get; set; }
+        public object? SampleValue { get; set; }
+    }
+
+    public class TableMetadataDto
+    {
+        public int FileId { get; set; }
+        public string TableName { get; set; } = string.Empty;
+        public int TotalRows { get; set; }
+        public List<ColumnMetadataDto> CategoricalColumns { get; set; } = new();
+        public List<ColumnMetadataDto> NumericalColumns { get; set; } = new();
+    }
+
+    public class ChartDataRequestDto
+    {
+        public int FileId { get; set; }
+        public string XColumn { get; set; } = string.Empty;
+        public string YColumn { get; set; } = string.Empty;
+        public string Aggregation { get; set; } = "Sum";
+        public bool Top10Only { get; set; }
+    }
+
+    public class ChartResponse
+    {
+        public string ChartTitle { get; set; } = string.Empty;
+        public string XLabel { get; set; } = string.Empty;
+        public string YLabel { get; set; } = string.Empty;
+        public List<ChartDataPoint> DataPoints { get; set; } = new();
+    }
+
+    public class ChartDataPoint
+    {
+        public string Label { get; set; } = string.Empty;
+        public double Value { get; set; }
+    }
+
+    public enum ColumnType { Categorical, Numerical, Text, Date, Boolean }
+
+    #endregion
 }
+

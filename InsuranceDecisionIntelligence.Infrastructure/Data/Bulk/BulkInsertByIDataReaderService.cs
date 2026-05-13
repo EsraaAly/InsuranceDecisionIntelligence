@@ -1,20 +1,14 @@
-﻿using DocumentFormat.OpenXml.Presentation;
-using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Wordprocessing;
-using InsuranceDecisionIntelligence.Application.Common.Models;
+﻿using InsuranceDecisionIntelligence.Application.Common.Models;
 using InsuranceDecisionIntelligence.Application.Interfaces.Data;
-using InsuranceDecisionIntelligence.Application.Services.Data;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -36,18 +30,13 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
             _databaseMetaDataService = databaseMetaDataService;
         }
 
-        // ================= MAIN =================
-
-
-        public async Task InsertAsync(string path,string fileName, IDataReader reader)
+        public async Task InsertAsync(string path, string fileName, IDataReader reader)
         {
             using SqlConnection conn = new SqlConnection(_connectionString.DefaultConnection);
             await conn.OpenAsync();
 
             string baseName = CleanName(Path.GetFileNameWithoutExtension(fileName));
             string tableName = $"{baseName}_{DateTime.Now:yyyyMMddHHmmss}";
-
-            // 1. get columns
 
             var columns = new List<string>();
 
@@ -63,32 +52,16 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
 
             using (var transaction = conn.BeginTransaction())
             {
-
                 try
                 {
-
-                    // 2. create table
-                    //var sw = Stopwatch.StartNew();
-
-                    //await CreateTableAsync(tableName, columns, conn, transaction);
-
-                    //_logger.LogInformation("CreateTable: {ms}", sw.ElapsedMilliseconds);
-
-                    //sw.Restart();
-                    //await InsertDataAsync(tableName, reader, columns, conn, transaction);
-
-                    //_logger.LogInformation(message: "BulkInsert: {ms}", sw.ElapsedMilliseconds);
-
-                    //await transaction.CommitAsync();
-
-                    var sw = Stopwatch.StartNew();
+                    var stopwatch = Stopwatch.StartNew();
 
                     await CreateTableAsync(tableName, columns, conn, transaction);
                     await transaction.CommitAsync();
+
                     await InsertDataAsync(tableName, reader, columns, conn, null);
-                    //await transaction.CommitAsync();
-                    sw.Stop();
-                    _logger.LogInformation("Bulk Insert: {ms}", sw.ElapsedMilliseconds);
+                    stopwatch.Stop();
+                    _logger.LogInformation("Bulk insert completed for table '{TableName}' with {ColumnCount} columns in {ElapsedMilliseconds} ms", tableName, columns.Count, stopwatch.ElapsedMilliseconds);
                 }
                 catch
                 {
@@ -98,77 +71,39 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
                 }
             }
 
-            //var swConvert = Stopwatch.StartNew();
-
-            //await ConvertTableTypesAsync(tableName, columns, conn, null);
-            //swConvert.Stop();
-            //_logger.LogInformation("convert Table: {ms}", swConvert.ElapsedMilliseconds);
-
-            bool isExist = await _databaseMetaDataService.TableExistsAsync( "UploadLog");
+            bool isExist = await _databaseMetaDataService.TableExistsAsync("UploadLog");
             if (!isExist)
             {
                 await CreateLogTableAsync(conn, null);
+                await CreateUploadLogIndexAsync(conn, null);
             }
 
-            await UpdateLogForOldDataAsync(fileName, conn,null);
-            await InsertLogDataAsync(tableName, fileName, path, conn,null);
-            
+            await UpdateLogForOldDataAsync(fileName, conn, null);
+            await InsertLogDataAsync(tableName, fileName, path, conn, null);
         }
 
 
         private async Task CreateTableAsync(
-                         string tableName,
-                         List<string> columns,
-                         SqlConnection conn,
-                         SqlTransaction transaction)
+            string tableName,
+            List<string> columns,
+            SqlConnection conn,
+            SqlTransaction transaction)
         {
-
-           var sb = new StringBuilder();
-            sb.Append($"[TableId] int Identity(1,1)");
+            var sb = new StringBuilder();
+            sb.Append($"[TableId] int Identity(1,1) PRIMARY KEY");
+            
             for (int i = 0; i < columns.Count; i++)
-           {
-               sb.Append(",");
-
-               string original = columns[i];
-               string col = original.ToLower();
-
-               //// DATE
-               //if (col.Contains("date"))
-               //{
-               //    sb.Append($"[{original}] DATETIME NULL");
-               //}
-               //// INT (more strict)
-               //else if (col.EndsWith("id") ||
-               //         col.Contains("_id") ||
-               //         col.Contains("year") ||
-               //         col.Contains("count") ||
-               //         col.Contains("qty") ||
-               //         col.StartsWith("n_"))
-               //{
-               //    sb.Append($"[{original}] INT");
-               //}
-               //// DECIMAL (financial only)
-               //else if (col.Contains("premium") ||
-               //         col.Contains("price") ||
-               //         col.Contains("cost") ||
-               //         col.Contains("amount"))
-               //{
-               //    sb.Append($"[{original}] DECIMAL(18,2)");
-               //}
-               //else
-               //{
-               //    sb.Append($"[{original}] NVARCHAR(500)");
-               //}
-               sb.Append($"[{original}] NVARCHAR(500)");
-           }
+            {
+                sb.Append(",");
+                string original = columns[i];
+                sb.Append($"[{original}] NVARCHAR(500)");
+            }
 
             string sql = $@"
                         CREATE TABLE [{tableName}] (
                         {sb}
                         )";
 
-                
-            
             using var cmd = new SqlCommand(sql, conn, transaction);
             await cmd.ExecuteNonQueryAsync();
         }
@@ -176,13 +111,13 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
 
 
         private async Task InsertDataAsync(
-                        string tableName,
-                        IDataReader reader,
-                        List<string> columns,
-                        SqlConnection conn,
-                        SqlTransaction transaction)
+            string tableName,
+            IDataReader reader,
+            List<string> columns,
+            SqlConnection conn,
+            SqlTransaction transaction)
         {
-            using var bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.TableLock, null)
+            using var bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.TableLock, transaction)
             {
                 DestinationTableName = tableName,
                 BatchSize = 50000,
@@ -190,25 +125,12 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
                 EnableStreaming = true
             };
 
-            var swmapping = Stopwatch.StartNew();
-
             for (int i = 0; i < columns.Count; i++)
             {
                 bulkCopy.ColumnMappings.Add(i, columns[i]);
             }
-            swmapping.Stop();
-            _logger.LogInformation("Mapping Coulmns: {ms}", swmapping.ElapsedMilliseconds);
-            //bulkCopy.NotifyAfter = 10000;
-
-            //bulkCopy.SqlRowsCopied += (s, e) =>
-            //{
-            //    _logger.LogInformation("Copied: {rows}", e.RowsCopied);
-            //};
-            var swwritetoserves = Stopwatch.StartNew();
 
             await bulkCopy.WriteToServerAsync(reader);
-            swwritetoserves.Stop();
-            _logger.LogInformation("Write to server: {ms}", swwritetoserves.ElapsedMilliseconds);
         }
 
         private async Task ConvertTableTypesAsync(
@@ -351,50 +273,86 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
             return "NVARCHAR(500)";
         }
 
-        private async Task CreateLogTableAsync(
-                         SqlConnection conn,
-                         SqlTransaction transaction)
+        private async Task CreateLogTableAsync(SqlConnection conn,SqlTransaction transaction)
         {
             var sw = Stopwatch.StartNew();
 
-            string sql = "CREATE TABLE UploadLog (Id int Identity(1,1),path NVARCHAR(250),fileName NVARCHAR(250),tableName NVARCHAR(250),UploadedAt DateTime,IsActive int)";
-            using var cmd = new SqlCommand(sql, conn,transaction);
-            await cmd.ExecuteNonQueryAsync();
+            const string sql = @"
+                            IF OBJECT_ID('UploadLog', 'U') IS NULL
+                            BEGIN
+                                CREATE TABLE UploadLog
+                                (
+                                    Id INT IDENTITY(1,1) PRIMARY KEY,
+                                    FileName NVARCHAR(250),
+                                    Path NVARCHAR(250),
+                                    TableName NVARCHAR(250),
+                                    UploadedAt DATETIME NOT NULL DEFAULT GETDATE(),
+                                    IsActive BIT NOT NULL DEFAULT 1
+                                )
+                            END";
 
-            sw.Stop();
-            _logger.LogInformation("Create Log Table: {ms}", sw.ElapsedMilliseconds);
-        }
-        private async Task UpdateLogForOldDataAsync(
-                         string filename,
-                         SqlConnection conn,
-                         SqlTransaction transaction)
-        {
-            var sw = Stopwatch.StartNew();
-
-
-            string sql = $"update UploadLog set IsActive = 0 where fileName = '{filename}'";
             using var cmd = new SqlCommand(sql, conn, transaction);
             await cmd.ExecuteNonQueryAsync();
 
             sw.Stop();
-            _logger.LogInformation("update Log Data: {ms}", sw.ElapsedMilliseconds);
+            _logger.LogInformation("UploadLog table created successfully in {ElapsedMilliseconds} ms", sw.ElapsedMilliseconds);
         }
-        private async Task InsertLogDataAsync(
-                         string tableName,
-                         string filename,
-                         string path,
-                         SqlConnection conn,
-                         SqlTransaction transaction)
-        {
-            var sw = Stopwatch.StartNew();
 
-            
-            string sql = $"Insert into UploadLog (path,filename,tablename,UploadedAt,IsActive) values('{path}','{filename}','{tableName}','{DateTime.Now}',1)";
-            using var cmd = new SqlCommand(sql, conn,transaction);
+        private async Task CreateUploadLogIndexAsync(SqlConnection conn, SqlTransaction transaction = null)
+        {
+            const string sql = @"
+                                IF NOT EXISTS (
+                                    SELECT name 
+                                    FROM sys.indexes 
+                                    WHERE name = 'IX_UploadLog_File_IsActive_Id'
+                                      AND object_id = OBJECT_ID('UploadLog')
+                                )
+                                BEGIN
+                                    CREATE INDEX IX_UploadLog_File_IsActive_Id
+                                    ON UploadLog(FileName, IsActive, Id DESC)
+                                END";
+
+            using var cmd = new SqlCommand(sql, conn, transaction);
+
+            cmd.CommandTimeout = 120; // index creation ممكن تاخد وقت
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task UpdateLogForOldDataAsync(
+            string filename,
+            SqlConnection conn,
+            SqlTransaction transaction)
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            string sql = $"UPDATE UploadLog SET IsActive = 0 WHERE FileName = @filename";
+            using var cmd = new SqlCommand(sql, conn, transaction);
+            cmd.Parameters.AddWithValue("@filename", filename);
             await cmd.ExecuteNonQueryAsync();
 
-            sw.Stop();
-            _logger.LogInformation("insert Log Data: {ms}", sw.ElapsedMilliseconds);
+            stopwatch.Stop();
+            _logger.LogInformation("Updated UploadLog data for file '{FileName}' in {ElapsedMilliseconds} ms", filename, stopwatch.ElapsedMilliseconds);
+        }
+        private async Task InsertLogDataAsync(
+            string tableName,
+            string filename,
+            string path,
+            SqlConnection conn,
+            SqlTransaction transaction)
+        {
+            var stopwatch = Stopwatch.StartNew();
+           
+            string sql = @"INSERT INTO UploadLog (Path, FileName, TableName, UploadedAt, IsActive) 
+                          VALUES (@path, @filename, @tableName, @uploadedAt, 1)";
+            using var cmd = new SqlCommand(sql, conn, transaction);
+            cmd.Parameters.AddWithValue("@path", path);
+            cmd.Parameters.AddWithValue("@filename", filename);
+            cmd.Parameters.AddWithValue("@tableName", tableName);
+            cmd.Parameters.AddWithValue("@uploadedAt", DateTime.Now);
+            await cmd.ExecuteNonQueryAsync();
+
+            stopwatch.Stop();
+            _logger.LogInformation("Inserted log entry for table '{TableName}' and file '{FileName}' in {ElapsedMilliseconds} ms", tableName, filename, stopwatch.ElapsedMilliseconds);
         }
 
         // ================= CLEAN NAME =================

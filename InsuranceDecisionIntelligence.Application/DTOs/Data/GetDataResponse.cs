@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 
 namespace InsuranceDecisionIntelligence.Application.DTOs.Data
 {
-    public class GetFileDetails
+    public class GetDataResponse
     {
         public dynamic Data { get; set; }
         public int Count { get; set; }
-        public int RowsCount { get; set; }
+        public long RowsCount { get; set; }
         public int ColumnsCount { get; set; }
         public DateTime UploadedDate { get; set; }
     }

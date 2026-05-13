@@ -4,7 +4,7 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         Title="CSV Import Dashboard" 
-        Height="900" 
+        Height="790" 
         Width="1400"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized"
@@ -43,19 +43,19 @@
                            Foreground="#333333"/>
 
                 <!-- Status Indicator -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <!--<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Ellipse Width="8" Height="8" Fill="#4CAF50" Margin="0,0,8,0"/>
                     <TextBlock Text="Background Import Service: Running" 
                                FontSize="14" 
                                Foreground="#666666"/>
-                </StackPanel>
+                </StackPanel>-->
             </Grid>
         </Border>
 
         <!-- Main Content - Left and Right Panels -->
         <Grid Grid.Row="1" Margin="20">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="500"/>
+                <ColumnDefinition Width="400"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -138,7 +138,7 @@
                                 <Button 
                                     Style="{StaticResource MaterialDesignFlatButton}"
                                     Padding="5"
-                                    Click="Refresh_Click" Margin="413,0,0,0">
+                                    Click="Refresh_Click" Margin="310,0,0,0">
                                     <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"/>
                                 </Button>
                             </Grid>
@@ -164,7 +164,7 @@
                     </materialDesign:Card>
 
                     <!-- Background Jobs Section -->
-                    <materialDesign:Card Style="{StaticResource MaterialCard}">
+                    <!--<materialDesign:Card Style="{StaticResource MaterialCard}">
                         <StackPanel>
                             <TextBlock Text="Background Jobs" 
                                    FontSize="18" 
@@ -190,7 +190,8 @@
                                 </DataGrid.Columns>
                             </DataGrid>
                         </StackPanel>
-                    </materialDesign:Card>
+                    </materialDesign:Card>-->
+                
                 </StackPanel>
             </ScrollViewer>
             <!-- Right Panel -->
@@ -207,8 +208,7 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="250"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
@@ -217,14 +217,11 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Total Rows:" Foreground="#666666" Margin="0,0,0,8"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="" x:Name="txtRowsCount" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Import Date: " x:Name="txtImportedDate" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" x:Name="txtRowsCount" Text="Total Rows:" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Import Date: " x:Name="txtImportedDate" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Total Columns:" Foreground="#666666" Margin="0,0,0,8"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="" x:Name="txtColumnsCount" FontWeight="SemiBold" Margin="0,0,0,8"/>
-
-                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Status: " x:Name="txtStatus" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" x:Name="txtColumnsCount" Text="Total Columns:" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="Status: " x:Name="txtStatus" FontWeight="SemiBold"/>
 
                             </Grid>
                         </StackPanel>
@@ -247,12 +244,11 @@
                                                VerticalAlignment="Center"
                                                Margin="0,0,20,0"/>
 
-                                    <Border BorderBrush="Black" BorderThickness="1" Margin="0,0,10,0">
-                                        <TextBox  x:Name="txtPageNo" Text="1" Width="60" Height="30" 
+                                 
+                                        <TextBox  x:Name="txtPageNo" Text="1" Width="60" Height="30" Margin="0,0,10,0"
                                                   VerticalAlignment="Center"  FontSize="15" Padding="5"
                                                   PreviewTextInput="NumberValidationTextBox"
                                                   TextChanged="txtPageNo_TextChanged"/>
-                                    </Border>
                                     <TextBlock Text="Page Number" VerticalAlignment="Center" Margin="0,0,20,0"/>
 
 
@@ -324,7 +320,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Button Content="{Binding}" Click="PageNumber_Click" Width="40" Margin="2" Padding="5"
-                                                    Style="{StaticResource PaginationButtons}" Loaded="Button_Loaded"/>
+                                                    Style="{StaticResource PaginationButtons}"/>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -335,103 +331,159 @@
                         </StackPanel>
                     </materialDesign:Card>
 
-                    <!-- Dashboard (Based on File Data) Section -->
-                    <materialDesign:Card Style="{StaticResource MaterialCard}" Margin="0,0,0,20">
+                    <!-- Dynamic Dashboard Section -->
+                    <!--<materialDesign:Card Style="{StaticResource MaterialCard}" Margin="0,0,0,20">
                         <StackPanel>
-                            <TextBlock Text="Dashboard (Based on File Data)" 
-                                       FontSize="18" 
-                                       FontWeight="SemiBold" 
-                                       Margin="0,0,0,20"/>
+                            <Grid Margin="0,0,0,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Column="0" 
+                                           Text="Dynamic Data Visualization Dashboard" 
+                                           FontSize="18" 
+                                           FontWeight="SemiBold" 
+                                           VerticalAlignment="Center"/>
 
-                                <!-- Top Row: Line Chart and Bar Chart -->
-                                <Grid Grid.Row="0" Margin="0,0,0,20">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Rows Over Time Line Chart -->
-                                    <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                                        <TextBlock Text="Rows Over Time" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                                        <lvc:CartesianChart Height="250"
-                                                            Series="{Binding LineChartData}"
-                                                            XAxes="{Binding LineChartXAxes}"
-                                                            YAxes="{Binding LineChartYAxes}">
-                                        </lvc:CartesianChart>
+                                 --><!--Refresh Charts Button--><!-- 
+                                <Button x:Name="RefreshChartsBtn" Grid.Column="1" 
+                                        Style="{StaticResource MaterialPrimaryButton}"
+                                        Padding="15,5"
+                                        Click="RefreshCharts_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Refresh" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Refresh Charts"/>
                                     </StackPanel>
+                                </Button>
 
-                                    <!-- Top 10 Values Bar Chart -->
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Top 10 Values (Column 4)" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                                        <lvc:CartesianChart Height="250"
-                                                            Series="{Binding BarChartData}"
-                                                            XAxes="{Binding BarChartXAxes}"
-                                                            YAxes="{Binding BarChartYAxes}">
-                                        </lvc:CartesianChart>
+                                --><!--Analyze Metadata Button--><!-- 
+                                <Button x:Name="AnalyzeMetadataBtn" Grid.Column="2" 
+                                        Style="{StaticResource MaterialPrimaryButton}"
+                                        Padding="15,5"
+                                        Click="AnalyzeMetadata_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Analytics" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Analyze Metadata"/>
                                     </StackPanel>
-                                </Grid>
-
-                                <!-- Bottom Row: Pie Chart and Summary Statistics -->
-                                <Grid Grid.Row="1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Distribution Pie Chart -->
-                                    <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                                        <TextBlock Text="Distribution (Column 5)" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                                        <lvc:PieChart Height="200"
-                                                      Series="{Binding PieChartData}">
-                                        </lvc:PieChart>
-                                    </StackPanel>
-
-                                    <!-- Summary Statistics -->
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Summary Statistics" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Total Rows:" Foreground="#666666" Margin="0,0,0,5"/>
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="105,555" FontWeight="SemiBold" Margin="0,0,0,5"/>
-
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Total Columns:" Foreground="#666666" Margin="0,0,0,5"/>
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="30" FontWeight="SemiBold" Margin="0,0,0,5"/>
-
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Numeric Columns:" Foreground="#666666" Margin="0,0,0,5"/>
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="12" FontWeight="SemiBold" Margin="0,0,0,5"/>
-
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Date Columns:" Foreground="#666666" Margin="0,0,0,5"/>
-                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="4" FontWeight="SemiBold" Margin="0,0,0,5"/>
-
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Text Columns:" Foreground="#666666" Margin="0,0,0,5"/>
-                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="14" FontWeight="SemiBold" Margin="0,0,0,5"/>
-
-                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Null Values:" Foreground="#666666"/>
-                                            <TextBlock Grid.Row="5" Grid.Column="1" Text="2.35%" FontWeight="SemiBold"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Grid>
+                                </Button>
                             </Grid>
+
+                             --><!--Dynamic Chart Controls--><!-- 
+                            <Border Background="#F8F9FA" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                     --><!--X-Axis Selector--><!-- 
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,0">
+                                        <TextBlock Text="X-Axis (Categorical)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                        <ComboBox x:Name="ComboBox_X" 
+                                                  DisplayMemberPath="ColumnName"
+                                                  SelectedValuePath="ColumnName"
+                                                  SelectionChanged="ComboBox_X_SelectionChanged"
+                                                  Height="35"/>
+                                    </StackPanel>
+
+                                     --><!--Y-Axis Selector--><!-- 
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,10,0">
+                                        <TextBlock Text="Y-Axis (Numerical)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                        <ComboBox x:Name="ComboBox_Y" 
+                                                  DisplayMemberPath="ColumnName"
+                                                  SelectedValuePath="ColumnName"
+                                                  SelectionChanged="ComboBox_Y_SelectionChanged"
+                                                  Height="35"/>
+                                    </StackPanel>
+
+                                     --><!--Aggregation Type Selector--><!-- 
+                                    <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,10,0">
+                                        <TextBlock Text="Aggregation" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                        <ComboBox x:Name="ComboBox_Aggregation" 
+                                                  SelectedIndex="0"
+                                                  SelectionChanged="ComboBox_Aggregation_SelectionChanged"
+                                                  Height="35">
+                                            <ComboBoxItem Content="Sum"/>
+                                            <ComboBoxItem Content="Average"/>
+                                            <ComboBoxItem Content="Count"/>
+                                            <ComboBoxItem Content="Max"/>
+                                            <ComboBoxItem Content="Min"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                     --><!--Top 10 Filter--><!-- 
+                                    <StackPanel Grid.Row="0" Grid.Column="3" Margin="0,0,0,0">
+                                        <TextBlock Text="Filter Options" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                        <CheckBox x:Name="CheckBox_Top10" 
+                                                  Content="Top 10 Only" 
+                                                  IsChecked="True"
+                                                  Checked="CheckBox_Top10_Changed"
+                                                  Unchecked="CheckBox_Top10_Changed"
+                                                  VerticalAlignment="Center"
+                                                  Height="35"/>
+                                    </StackPanel>
+
+                                     --><!--Status Message--><!-- 
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="4" 
+                                               x:Name="txtChartStatus" 
+                                               Text="Select a file to preview and choose columns to visualize data"
+                                               FontSize="12" 
+                                               Foreground="#666666"
+                                               Margin="0,10,0,0"/>
+                                </Grid>
+                            </Border>
+
+                             --><!--Dynamic Chart Display--> 
+                            <!--<StackPanel>
+                                <TextBlock x:Name="txtDynamicChartTitle" 
+                                           Text="Select columns to generate chart" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold" 
+                                           Margin="0,0,0,15"
+                                           HorizontalAlignment="Center"/>
+                                
+                                <lvc:CartesianChart x:Name="DynamicChart"
+                                                    Height="400"
+                                                    Series="{Binding DynamicChartData}"
+                                                    XAxes="{Binding DynamicChartXAxes}"
+                                                    YAxes="{Binding DynamicChartYAxes}">
+                                </lvc:CartesianChart>
+                            </StackPanel>--><!--
+                            <StackPanel >
+                                <TextBlock x:Name="txtDynamicChartTitle" 
+                                            Text="Select columns to generate chart" 
+                                            FontSize="16" 
+                                            FontWeight="SemiBold" 
+                                            Margin="0,0,0,15"
+                                            HorizontalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
+                                    <RadioButton x:Name="BtnColumn" Style="{StaticResource MaterialDesignTabRadioButton}" 
+                                                 IsChecked="True" Content="Column Chart" Click="ChartType_Click"/>
+                                    <RadioButton x:Name="BtnLine" Style="{StaticResource MaterialDesignTabRadioButton}" 
+                                                Content="Line Chart" Click="ChartType_Click"/>
+                                    <RadioButton x:Name="BtnPie" Style="{StaticResource MaterialDesignTabRadioButton}" 
+                                                Content="Pie Chart" Click="ChartType_Click"/>
+                                </StackPanel>
+
+                                <Grid Height="450">
+                                    <ProgressBar x:Name="ChartLoadingBar" Style="{StaticResource MaterialDesignCircularProgressBar}" 
+                                                    IsIndeterminate="True" Visibility="Collapsed" Panel.ZIndex="1"/>
+
+                                    <lvc:CartesianChart x:Name="MainCartesianChart" Visibility="Visible"/>
+                                    <lvc:PieChart x:Name="MainPieChart" Visibility="Collapsed"/>
+                                </Grid>
+                            </StackPanel>
                         </StackPanel>
-                    </materialDesign:Card>
+                    </materialDesign:Card>-->
+                    
                 </StackPanel>
             </ScrollViewer>
         </Grid>
@@ -446,7 +498,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Last Refresh -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <!--<StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="Last Refresh: 5/18/2024 10:20:30 AM" Foreground="#666666"/>
                     <Button Style="{StaticResource MaterialDesignFlatButton}" 
                             Padding="5" 
@@ -454,24 +506,24 @@
                             Click="Refresh_Click">
                         <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"/>
                     </Button>
-                </StackPanel>
+                </StackPanel>-->
 
                 <!-- Status Message -->
-                <TextBlock Grid.Column="1" 
+                <!--<TextBlock Grid.Column="1" 
                            Text="Bulk INSERT is running in background." 
                            Foreground="#FF9800"
                            VerticalAlignment="Center"
-                           Margin="0,0,20,0"/>
+                           Margin="0,0,20,0"/>-->
 
                 <!-- View Logs Button -->
-                <Button Grid.Column="2" 
+                <!--<Button Grid.Column="2" 
                         Style="{StaticResource MaterialOutlineButton}"
                         Padding="15,5">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="FileDocument" Margin="0,0,5,0"/>
                         <TextBlock Text="View Logs"/>
                     </StackPanel>
-                </Button>
+                </Button>-->
             </Grid>
         </Border>
     </Grid>

@@ -17,9 +17,9 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
     public class BulkInsertByDataTableService : IBulkInsertByDataTableService
     {
         private readonly ConnectionSettings _connectionString;
-        private readonly ILogger<BulkInsertByIDataReaderService> _logger;
+        private readonly ILogger<BulkInsertByDataTableService> _logger;
 
-        public BulkInsertByDataTableService(IOptions<ConnectionSettings> options, ILogger<BulkInsertByIDataReaderService> logger)
+        public BulkInsertByDataTableService(IOptions<ConnectionSettings> options, ILogger<BulkInsertByDataTableService> logger)
         {
             _connectionString = options.Value;
             _logger = logger;
@@ -35,20 +35,17 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Data.Bulk
 
             try
             {
-                //Read type	  batch Size	bulk option	enable streaming	copy file	read data	Bulk Insert	 Insert finished
-                //data table	 50000  	table lock  	F	            52	        6268        	33473	    34099
-
                 string baseName = CleanName(Path.GetFileNameWithoutExtension(fileName));
                 string tableName = $"{baseName}_{DateTime.Now:yyyyMMddHHmmss}";
 
-                var sw = Stopwatch.StartNew();
+                var stopwatch = Stopwatch.StartNew();
 
-                await CreateTableAsync(tableName,dataTable,conn,transaction);
-                await InsertDataAsync(tableName,dataTable,conn,transaction);
+                await CreateTableAsync(tableName, dataTable, conn, transaction);
+                await InsertDataAsync(tableName, dataTable, conn, transaction);
                 await transaction.CommitAsync();
 
-                sw.Stop();
-                _logger.LogInformation("TOTAL INSERT: {ms}", sw.ElapsedMilliseconds);
+                stopwatch.Stop();
+                _logger.LogInformation("Bulk insert completed for table '{TableName}' with {RowCount} rows and {ColumnCount} columns in {ElapsedMilliseconds} ms", tableName, dataTable.Rows.Count, dataTable.Columns.Count, stopwatch.ElapsedMilliseconds);
             }
             catch
             {

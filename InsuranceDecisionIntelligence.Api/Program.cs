@@ -17,21 +17,20 @@ namespace InsuranceDecisionIntelligence.Api
 
             builder.Services.AddControllers();
             builder.Services.AddMemoryCache();
-
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new() { Title = "API", Version = "v1" });
             });
-            
+
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.Limits.MaxRequestBodySize = long.MaxValue;
+            });
+
             builder.Services.Configure<FormOptions>(options =>
             {
                 options.MultipartBodyLengthLimit = long.MaxValue;
-            });
-            
-            builder.WebHost.ConfigureKestrel(options =>
-            {
-                options.Limits.MaxRequestBodySize = null;
             });
 
             ApplicationServiceRegistration.AddInfrastructureServices(builder.Services, builder.Configuration);
@@ -47,7 +46,6 @@ namespace InsuranceDecisionIntelligence.Api
             app.UseHttpsRedirection();
             app.UseAuthorization();
             app.MapControllers();
-
             app.Run();
         }
     }

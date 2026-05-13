@@ -11,15 +11,14 @@ namespace InsuranceDecisionIntelligence.Application.Interfaces.Data
 {
     public interface IDatabaseMetaDataService
     {
-        //public Task CreateTableAsync(
-        //    string tableName,            
-        //    SqlConnection conn,
-        //    SqlTransaction transaction,
-        //    DataTable dataTable = null,
-        //    List<string> columns = null);
-
-        public Task<string> GetTableNameByPath(string Path);
-        public Task<string> GetTableNameById(int Id);
+        public Task<IEnumerable<dynamic>> GetDynamicChartData(
+                                                                string tableName,
+                                                                string xAxisColumn,
+                                                                string yAxisColumn,
+                                                                string aggregationType,
+                                                                bool top10Only);
+        public Task<string> GetTableNameByPathAsync(string Path);
+        public Task<string> GetTableNameByIdAsync(int Id);
         public Task<IEnumerable<GetUploadedFilesDto>> GetUploadedFilesAsync();
         public Task<Dictionary<string, object>> GetTableDetailsByIdAsync(int Id);
         public Task<bool> TableExistsAsync(string tableName);

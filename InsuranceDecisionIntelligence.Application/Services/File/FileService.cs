@@ -33,18 +33,12 @@ namespace InsuranceDecisionIntelligence.Application.Services.File
             _logger = logger;
         }
 
-        public Task<string> GetUploadedFilesAsync()
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<string> ProcessFile(IFormFile file)
         {
             if (file == null || file.Length == 0)
                 throw new ArgumentException("File is empty");
 
             var basePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), ".."));
-
             var folderPath = Path.Combine(
                 basePath,
                 "InsuranceDecisionIntelligence.Infrastructure",
@@ -53,14 +47,13 @@ namespace InsuranceDecisionIntelligence.Application.Services.File
             );
 
             await _fileProvider.CreateDirectoryAsync(folderPath);
-
             string fullPath = await _fileProvider.SaveAync(file, folderPath);
 
             _ = Task.Run(async () =>
             {
 
 
-
+#region By Data Table
                 //////////////////////////////By Data Table//////////////////////////////////
 
                 //var swRead = Stopwatch.StartNew();
@@ -73,22 +66,20 @@ namespace InsuranceDecisionIntelligence.Application.Services.File
                 //await _bulkInsertByDataTableService.InsertAsync(file.FileName, dataTable);
                 //swInsert.Stop();
                 //_logger.LogInformation("Insert TOTAL: {ms}", swInsert.ElapsedMilliseconds);
-
+#endregion
+                
                 ////////////////////////////////By Data Reader////////////////////////////////
 
                 var swRead = Stopwatch.StartNew();
                 var reader = await _fileReader.ReadAsDataReaderAsync(fullPath);
                 swRead.Stop();
-                _logger.LogInformation("Read: {ms}", swRead.ElapsedMilliseconds);
+                _logger.LogInformation("File read completed for '{FileName}' in {ElapsedMilliseconds} ms", file.FileName, swRead.ElapsedMilliseconds);
 
                 var swInsert = Stopwatch.StartNew();
                 await _bulkInsertByIDataReaderService.InsertAsync(fullPath, file.FileName, reader);
-
                 swInsert.Stop();
-                _logger.LogInformation("Insert TOTAL: {ms}", swInsert.ElapsedMilliseconds);
+                _logger.LogInformation("File insert completed for '{FileName}' in {ElapsedMilliseconds} ms", file.FileName, swInsert.ElapsedMilliseconds);
             });
-            //using var dataTable = await _fileReader.ReadAsDataTableAsync(fullPath);
-            //await _bulkInsertService.InsertAsync(file.FileName, dataTable);
 
             return fullPath;
         }

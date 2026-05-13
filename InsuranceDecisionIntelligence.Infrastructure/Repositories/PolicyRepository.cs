@@ -27,22 +27,59 @@ namespace InsuranceDecisionIntelligence.Infrastructure.Repositories
         }
 
         //by Dapper
-        public async Task<GetFileDetails> GetDataAsync(string tableName, int page, int pageSize)
+        public async Task<GetDataResponse> GetDataAsync(string tableName, int page, int pageSize)
         {
+            //var skip = (page - 1) * pageSize;
+            //var take = pageSize;
+
+            //using SqlConnection conn = new SqlConnection(_connectionString.DefaultConnection);
+            //string query = $"Select * from [{tableName}] order by TableId offset {skip} rows fetch next {take} rows only";
+
+
+            //var result = await conn.QueryAsync(query);
+            //var count_rows = result.Count();
+            //return new GetFileDetails
+            //{
+            //    Data = result,
+            //    Count = count_rows
+            //};
             var skip = (page - 1) * pageSize;
             var take = pageSize;
 
+            // كود SQL محسّن بيجيب الـ Count والـ Data في خبطة واحدة
+            string countQuery = $@"SELECT SUM(rows) FROM sys.partitions 
+                       WHERE object_id = OBJECT_ID('{tableName}') 
+                       AND index_id < 2;";
+
+            //string dataQuery = $@"SELECT * FROM [{tableName}] 
+            //          ORDER BY TableId 
+            //          OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY";
+
+            string dataQuery = $"SELECT TOP {take} * FROM {tableName} WHERE TableId > {skip} ORDER BY TableId;";
+
+            string finalQuery = countQuery + dataQuery;
+
+            //string query = $@"
+            //                SELECT COUNT(*) FROM [{tableName}];
+            //                SELECT * FROM [{tableName}] 
+            //                ORDER BY TableId 
+            //                OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY";
+
             using SqlConnection conn = new SqlConnection(_connectionString.DefaultConnection);
 
-            string query = $"Select * from [{tableName}] order by TableId offset {skip} rows fetch next {take} rows only";
+            // استخدام QueryMultipleAsync لتقليل الـ Round trips لقاعدة البيانات
+            using var multi = await conn.QueryMultipleAsync(finalQuery);
 
+            // السطر ده هيجيب الـ Count من أول Select في الكويري
+            var totalCount = await multi.ReadFirstAsync<int>();
 
-            var result = await conn.QueryAsync(query);
-            var count_rows = result.Count();
-            return new GetFileDetails
+            // السطر ده هيجيب الـ 1000 سجل بتوعك
+            var result = await multi.ReadAsync<dynamic>();
+
+            return new GetDataResponse
             {
                 Data = result,
-                Count = count_rows
+                Count = totalCount // كدة الـ Count بقى دقيق وشامل كل الجدول
             };
         }
 
