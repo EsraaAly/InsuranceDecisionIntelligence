@@ -1,4 +1,4 @@
-using InsuranceDecisionIntelligence.Application.DTOs.Data;
+using InsuranceDecisionIntelligence.Application.DTOs.Datasets;
 using System;
 
 namespace InsuranceDecisionIntelligence.Application.Common
@@ -32,9 +32,9 @@ namespace InsuranceDecisionIntelligence.Application.Common
             return Result.Success();
         }
 
-        public static Result ValidateChartRequest(ChartDataRequestDto request)
+        public static Result ValidateChartRequest(DatasetChartQueryRequest request)
         {
-            if (request.fileId <= 0)
+            if (request.FileId <= 0)
                 return Result.Failure(Error.Validation("File ID must be positive"));
             
             if (string.IsNullOrWhiteSpace(request.XColumn))

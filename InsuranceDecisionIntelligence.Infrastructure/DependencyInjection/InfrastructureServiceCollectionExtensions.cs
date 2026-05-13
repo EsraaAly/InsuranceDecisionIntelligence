@@ -1,0 +1,35 @@
+using InsuranceDecisionIntelligence.Application.Abstractions.Data;
+using InsuranceDecisionIntelligence.Application.Abstractions.File;
+using InsuranceDecisionIntelligence.Application.Abstractions.Persistence;
+using InsuranceDecisionIntelligence.Application.Configuration;
+using InsuranceDecisionIntelligence.Application.Services.Datasets;
+using InsuranceDecisionIntelligence.Application.Services.Uploads;
+using InsuranceDecisionIntelligence.Infrastructure.Data.Import;
+using InsuranceDecisionIntelligence.Infrastructure.Data.Uploads;
+using InsuranceDecisionIntelligence.Infrastructure.FileStorage;
+using InsuranceDecisionIntelligence.Infrastructure.FileStorage.Readers;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace InsuranceDecisionIntelligence.Infrastructure.DependencyInjection;
+
+public static class InfrastructureServiceCollectionExtensions
+{
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<FileStorageOptions>(configuration.GetSection("FileStorageSettings"));
+        services.Configure<DatabaseConnectionOptions>(configuration.GetSection("ConnectionStrings"));
+
+        services.AddScoped<IFileStorageService, LocalDiskFileStorageService>();
+        services.AddScoped<IFileUploadImportService, FileUploadImportService>();
+        services.AddScoped<ITabularFileReader, CsvExcelTabularFileReader>();
+        services.AddScoped<IDataReaderSqlBulkImporter, DataReaderSqlBulkImporter>();
+        services.AddScoped<IDataTableSqlBulkImporter, DataTableSqlBulkImporter>();
+        services.AddScoped<IUploadDatasetMetadataReader, SqlUploadDatasetMetadataReader>();
+        services.AddScoped<IImportedDatasetQueryService, ImportedDatasetQueryService>();
+        services.AddScoped<IImportedDatasetPageRepository, SqlImportedDatasetPageRepository>();
+        services.AddScoped<IDatasetChartQueryService, DatasetChartQueryService>();
+
+        return services;
+    }
+}

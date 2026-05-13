@@ -1,5 +1,5 @@
-﻿
-using InsuranceDecisionIntelligence.Infrastructure;
+
+using InsuranceDecisionIntelligence.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using OfficeOpenXml;
@@ -33,7 +33,7 @@ namespace InsuranceDecisionIntelligence.Api
                 options.MultipartBodyLengthLimit = long.MaxValue;
             });
 
-            ApplicationServiceRegistration.AddInfrastructureServices(builder.Services, builder.Configuration);
+            builder.Services.AddInfrastructureServices(builder.Configuration);
 
             var app = builder.Build();
 

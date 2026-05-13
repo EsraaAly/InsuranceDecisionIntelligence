@@ -1,4 +1,7 @@
-﻿using InsuranceDecisionIntelligence.UI.Common;
+using InsuranceDecisionIntelligence.Application.DTOs.Datasets;
+using InsuranceDecisionIntelligence.Application.DTOs.Uploads;
+using InsuranceDecisionIntelligence.UI.Common;
+using InsuranceDecisionIntelligence.UI.Http;
 using InsuranceDecisionIntelligence.UI.Services;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
@@ -29,7 +32,7 @@ namespace InsuranceDecisionIntelligence.UI
     {
         #region Fields
 
-        private readonly ApiService _apiService;
+        private readonly BackendApiClient _apiClient;
         private readonly System.Timers.Timer _refreshTimer;
         private readonly ObservableCollection<int> _pageNumbers = new();
 
@@ -56,7 +59,7 @@ namespace InsuranceDecisionIntelligence.UI
                 BaseAddress = new Uri("https://localhost:7039/"),
                 Timeout = TimeSpan.FromMinutes(5)
             };
-            _apiService = new ApiService(httpClient);
+            _apiClient = new BackendApiClient(httpClient);
 
             _ = LoadUploadedFilesFromApiAsync();
         }
@@ -81,7 +84,7 @@ namespace InsuranceDecisionIntelligence.UI
 
         #region Collections
 
-        public ObservableCollection<UploadedFile> UploadedFiles { get; set; } = new();
+        public ObservableCollection<UploadedFileSummaryDto> UploadedFiles { get; set; } = new();
         public ObservableCollection<BackgroundJob> BackgroundJobs { get; set; } = new();
         public ObservableCollection<ColumnMetadataDto> CategoricalColumns { get; set; } = new();
         public ObservableCollection<ColumnMetadataDto> NumericalColumns { get; set; } = new();
@@ -94,7 +97,7 @@ namespace InsuranceDecisionIntelligence.UI
         {
             try
             {
-                var result = await _apiService.GetFilesAsync();
+                var result = await _apiClient.GetUploadedSummariesAsync();
                 
                 result.Match(
                     onSuccess: files =>
@@ -116,7 +119,7 @@ namespace InsuranceDecisionIntelligence.UI
         {
             try
             {
-                var result = await _apiService.UploadFileAsync(filePath);
+                var result = await _apiClient.UploadFileAsync(filePath);
                 
                 result.Match(
                     onSuccess: response =>
@@ -137,7 +140,7 @@ namespace InsuranceDecisionIntelligence.UI
         {
             try
             {
-                var result = await _apiService.GetFilePreviewAsync(id, pageNo, pageSize);
+                var result = await _apiClient.GetImportedDatasetPageAsync(id, pageNo, pageSize);
                 
                 result.Match(
                     onSuccess: preview =>
@@ -248,7 +251,7 @@ namespace InsuranceDecisionIntelligence.UI
         //        ChartLoadingBar.Visibility = Visibility.Visible;
         //        txtChartStatus.Text = "Analyzing metadata...";
 
-        //        var request = new ChartDataRequestDto
+        //        var request = new DatasetChartQueryRequest
         //        {
         //            FileId = _currentTableMetadata.FileId,
         //            XColumn = ComboBox_X.SelectedValue?.ToString(),
@@ -257,7 +260,7 @@ namespace InsuranceDecisionIntelligence.UI
         //            Top10Only = CheckBox_Top10.IsChecked == true
         //        };
 
-        //        var result = await _apiService.GetChartDataAsync(request);
+        //        var result = await _apiClient.GetChartDataAsync(request);
                 
         //        result.Match(
         //            onSuccess: chartData =>
@@ -419,7 +422,7 @@ namespace InsuranceDecisionIntelligence.UI
 
         private async void Preview_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is not Button btn || btn.CommandParameter is not UploadedFile file) return;
+            if (sender is not Button btn || btn.CommandParameter is not UploadedFileSummaryDto file) return;
 
             if (string.IsNullOrEmpty(txtPageNo.Text) || txtPageNo.Text == "0")
                 txtPageNo.Text = "1";
@@ -562,7 +565,7 @@ namespace InsuranceDecisionIntelligence.UI
         {
             _refreshTimer?.Stop();
             _refreshTimer?.Dispose();
-            _apiService?.Dispose();
+            _apiClient?.Dispose();
             base.OnClosed(e);
         }
 
@@ -570,13 +573,6 @@ namespace InsuranceDecisionIntelligence.UI
     }
 
     #region Data Models
-
-    public class UploadedFile
-    {
-        public int Id { get; set; }
-        public string FileName { get; set; } = string.Empty;
-        public string UploadedAt { get; set; } = string.Empty;
-    }
 
     public class DataPreviewItem
     {
@@ -610,15 +606,6 @@ namespace InsuranceDecisionIntelligence.UI
         public int TotalRows { get; set; }
         public List<ColumnMetadataDto> CategoricalColumns { get; set; } = new();
         public List<ColumnMetadataDto> NumericalColumns { get; set; } = new();
-    }
-
-    public class ChartDataRequestDto
-    {
-        public int FileId { get; set; }
-        public string XColumn { get; set; } = string.Empty;
-        public string YColumn { get; set; } = string.Empty;
-        public string Aggregation { get; set; } = "Sum";
-        public bool Top10Only { get; set; }
     }
 
     public class ChartResponse
