@@ -1,6 +1,8 @@
+using Hangfire;
 using InsuranceDecisionIntelligence.Application.Abstractions.Data;
 using InsuranceDecisionIntelligence.Application.Abstractions.File;
 using InsuranceDecisionIntelligence.Application.Abstractions.Queue;
+using InsuranceDecisionIntelligence.Application.PersistentJobQueue;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -14,19 +16,22 @@ public class FileUploadImportService : IFileUploadImportService
     private readonly IDataReaderSqlBulkImporter _dataReaderBulkImporter;
     private readonly ILogger<FileUploadImportService> _logger;
     //private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-    private readonly IQueueService _taskQueue;
+    //private readonly IQueueService _taskQueue;
+    private readonly IBackgroundJobClient _backgroundJobClient;
 
     public FileUploadImportService(
         IFileStorageService fileStorage,
         ITabularFileReader tabularFileReader,
         IDataReaderSqlBulkImporter dataReaderBulkImporter,
-        IQueueService taskQueue,
+        //IQueueService taskQueue,
+        IBackgroundJobClient backgroundJobClient,
         ILogger<FileUploadImportService> logger)
     {
         _fileStorage = fileStorage;
         _tabularFileReader = tabularFileReader;
         _dataReaderBulkImporter = dataReaderBulkImporter;
-        _taskQueue = taskQueue;
+        //_taskQueue = taskQueue;
+        _backgroundJobClient = backgroundJobClient;
         _logger = logger;
     }
 
@@ -45,7 +50,11 @@ public class FileUploadImportService : IFileUploadImportService
         await _fileStorage.CreateDirectoryAsync(folderPath);
         string fullPath = await _fileStorage.SaveAsync(file, folderPath);
 
-        await _taskQueue.QueueBackgroundWorkItemAsync(fullPath);
+        _backgroundJobClient.Enqueue<FileImportJobProcessor>(processor =>
+            processor.ProcessFileAsync(fullPath, file.FileName));
+
+        //await _taskQueue.QueueBackgroundWorkItemAsync(fullPath);
+
         //_ = Task.Run(async () =>
         //{
         //    await _semaphore.WaitAsync();

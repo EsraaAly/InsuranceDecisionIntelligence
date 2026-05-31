@@ -97,7 +97,7 @@ public class DataReaderSqlBulkImporter : IDataReaderSqlBulkImporter
             SqlTransaction transaction)
         {
             var sb = new StringBuilder();
-            sb.Append($"[TableId] int Identity(1,1) "); 
+            sb.Append($"[TableId] int Identity(1,1) PRIMARY KEY "); 
             
             for (int i = 0; i < columns.Count; i++)
             {

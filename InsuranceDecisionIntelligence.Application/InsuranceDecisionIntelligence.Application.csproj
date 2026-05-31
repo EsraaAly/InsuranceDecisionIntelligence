@@ -10,6 +10,7 @@
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="EPPlus" Version="8.5.4" />
     <PackageReference Include="ExcelDataReader" Version="3.8.0" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.23" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.14">
       <PrivateAssets>all</PrivateAssets>

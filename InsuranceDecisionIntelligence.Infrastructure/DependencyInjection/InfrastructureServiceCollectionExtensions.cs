@@ -1,3 +1,4 @@
+using Hangfire;
 using InsuranceDecisionIntelligence.Application.Abstractions.Data;
 using InsuranceDecisionIntelligence.Application.Abstractions.File;
 using InsuranceDecisionIntelligence.Application.Abstractions.Persistence;
@@ -31,8 +32,19 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IImportedDatasetQueryService, ImportedDatasetQueryService>();
         services.AddScoped<IImportedDatasetPageRepository, SqlImportedDatasetPageRepository>();
         services.AddScoped<IDatasetChartQueryService, DatasetChartQueryService>();
+
         services.AddSingleton<IQueueService, QueueService>();
         services.AddHostedService<FileImportBackgroundWorker>();
+
+        services.AddHangfire(config => config
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UseSqlServerStorage(configuration.GetConnectionString("DefaultConnection")));
+
+        services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = 1;
+        });
         return services;
     }
 }
