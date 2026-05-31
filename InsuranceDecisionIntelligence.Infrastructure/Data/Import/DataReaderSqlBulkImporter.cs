@@ -55,16 +55,22 @@ public class DataReaderSqlBulkImporter : IDataReaderSqlBulkImporter
             {
                 try
                 {
-                    var stopwatch = Stopwatch.StartNew();
 
                     await CreateTableAsync(tableName, columns, conn, transaction);
                     await transaction.CommitAsync();
+                    var stopwatch = Stopwatch.StartNew();
 
                     await InsertDataAsync(tableName, reader, columns, conn, null);
                     stopwatch.Stop();
                     _logger.LogInformation("SqlBulk import completed for table '{TableName}' with {ColumnCount} columns in {ElapsedMilliseconds} ms", tableName, columns.Count, stopwatch.ElapsedMilliseconds);
-                }
-                catch
+                    var stopwatch_AddIndex = Stopwatch.StartNew();
+
+                    //await AddIndexAsync(tableName, conn, null);
+                    //stopwatch_AddIndex.Stop();
+                    //_logger.LogInformation("AddIndex eted for table '{TableName}' in {ElapsedMilliseconds} ms", tableName, stopwatch_AddIndex.ElapsedMilliseconds);
+
+            }
+            catch
                 {
                     await transaction.RollbackAsync();
                     await conn.CloseAsync();
@@ -91,12 +97,13 @@ public class DataReaderSqlBulkImporter : IDataReaderSqlBulkImporter
             SqlTransaction transaction)
         {
             var sb = new StringBuilder();
-            sb.Append($"[TableId] int Identity(1,1) PRIMARY KEY");
+            sb.Append($"[TableId] int Identity(1,1) "); 
             
             for (int i = 0; i < columns.Count; i++)
             {
                 sb.Append(",");
                 string original = columns[i];
+
                 sb.Append($"[{original}] NVARCHAR(500)");
             }
 
@@ -109,16 +116,26 @@ public class DataReaderSqlBulkImporter : IDataReaderSqlBulkImporter
             await cmd.ExecuteNonQueryAsync();
         }
 
+        private async Task AddIndexAsync(
+                string tableName,
+                SqlConnection conn,
+                SqlTransaction transaction)
+        {
+            string sql = $@"ALTER TABLE [{tableName}] ADD CONSTRAINT PK_{tableName} PRIMARY KEY CLUSTERED ([TableId]);";
 
+            using var cmd = new SqlCommand(sql, conn, transaction);
+            await cmd.ExecuteNonQueryAsync();
+        }
 
-        private async Task InsertDataAsync(
+    private async Task InsertDataAsync(
             string tableName,
             IDataReader reader,
             List<string> columns,
             SqlConnection conn,
             SqlTransaction transaction)
         {
-            using var bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.TableLock, transaction)
+            using var bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.TableLock |
+                                                SqlBulkCopyOptions.UseInternalTransaction, transaction)
             {
                 DestinationTableName = tableName,
                 BatchSize = 50000,
@@ -134,90 +151,90 @@ public class DataReaderSqlBulkImporter : IDataReaderSqlBulkImporter
             await bulkCopy.WriteToServerAsync(reader);
         }
 
-        private async Task ConvertTableTypesAsync(
-                                string rawTableName,
-                                List<string> columns,
-                                SqlConnection conn,
-                                SqlTransaction transaction)
-        {
+        //private async Task ConvertTableTypesAsync(
+        //                        string rawTableName,
+        //                        List<string> columns,
+        //                        SqlConnection conn,
+        //                        SqlTransaction transaction)
+        //{
 
-            string finalTable = rawTableName + "_Final";
+        //    string finalTable = rawTableName + "_Final";
 
-            var create = new StringBuilder();
+        //    var create = new StringBuilder();
 
-            for (int i = 0; i < columns.Count; i++)
-            {
-                if (i > 0)
-                    create.Append(",");
+        //    for (int i = 0; i < columns.Count; i++)
+        //    {
+        //        if (i > 0)
+        //            create.Append(",");
 
-                string col = columns[i];
+        //        string col = columns[i];
 
-                string type = await DetectColumnTypeAsync(
-                    rawTableName,
-                    col,
-                    conn,
-                    transaction);
+        //        string type = await DetectColumnTypeAsync(
+        //            rawTableName,
+        //            col,
+        //            conn,
+        //            transaction);
 
-                create.Append($"[{col}] {type} NULL");
-            }
+        //        create.Append($"[{col}] {type} NULL");
+        //    }
 
-            // create final table
-            string createSql = $@"
-                                CREATE TABLE [{finalTable}]
-                                (
-                                    {create}
-                                )";
+        //    // create final table
+        //    string createSql = $@"
+        //                        CREATE TABLE [{finalTable}]
+        //                        (
+        //                            {create}
+        //                        )";
 
-            using (var cmd = new SqlCommand(createSql, conn, transaction))
-            {
-                await cmd.ExecuteNonQueryAsync();
-            }
+        //    using (var cmd = new SqlCommand(createSql, conn, transaction))
+        //    {
+        //        await cmd.ExecuteNonQueryAsync();
+        //    }
 
-            // insert converted data
-            var insert = new StringBuilder();
+        //    // insert converted data
+        //    var insert = new StringBuilder();
 
-            for (int i = 0; i < columns.Count; i++)
-            {
-                if (i > 0)
-                    insert.Append(",");
+        //    for (int i = 0; i < columns.Count; i++)
+        //    {
+        //        if (i > 0)
+        //            insert.Append(",");
 
-                string col = columns[i];
+        //        string col = columns[i];
 
-                string type = await DetectColumnTypeAsync(
-                    rawTableName,
-                    col,
-                    conn,
-                    transaction);
+        //        string type = await DetectColumnTypeAsync(
+        //            rawTableName,
+        //            col,
+        //            conn,
+        //            transaction);
 
-                if (type == "INT")
-                {
-                    insert.Append($"TRY_CAST([{col}] AS INT)");
-                }
-                else if (type == "DECIMAL(18,2)")
-                {
-                    insert.Append($"TRY_CAST([{col}] AS DECIMAL(18,2))");
-                }
-                else if (type == "DATETIME")
-                {
-                    insert.Append($"TRY_CAST([{col}] AS DATETIME)");
-                }
-                else
-                {
-                    insert.Append($"[{col}]");
-                }
-            }
+        //        if (type == "INT")
+        //        {
+        //            insert.Append($"TRY_CAST([{col}] AS INT)");
+        //        }
+        //        else if (type == "DECIMAL(18,2)")
+        //        {
+        //            insert.Append($"TRY_CAST([{col}] AS DECIMAL(18,2))");
+        //        }
+        //        else if (type == "DATETIME")
+        //        {
+        //            insert.Append($"TRY_CAST([{col}] AS DATETIME)");
+        //        }
+        //        else
+        //        {
+        //            insert.Append($"[{col}]");
+        //        }
+        //    }
 
-            string insertSql = $@"
-                                INSERT INTO [{finalTable}]
-                                SELECT
-                                    {insert}
-                                FROM [{rawTableName}]";
+        //    string insertSql = $@"
+        //                        INSERT INTO [{finalTable}]
+        //                        SELECT
+        //                            {insert}
+        //                        FROM [{rawTableName}]";
 
-            using (var cmd = new SqlCommand(insertSql, conn, transaction))
-            {
-                await cmd.ExecuteNonQueryAsync();
-            }
-        }
+        //    using (var cmd = new SqlCommand(insertSql, conn, transaction))
+        //    {
+        //        await cmd.ExecuteNonQueryAsync();
+        //    }
+        //}
 
         private async Task<string> DetectColumnTypeAsync(
                                     string tableName,
