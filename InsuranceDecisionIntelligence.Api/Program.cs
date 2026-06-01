@@ -1,4 +1,5 @@
 
+using Hangfire;
 using InsuranceDecisionIntelligence.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
@@ -46,6 +47,7 @@ namespace InsuranceDecisionIntelligence.Api
             app.UseHttpsRedirection();
             app.UseAuthorization();
             app.MapControllers();
+            app.UseHangfireDashboard();
             app.Run();
         }
     }

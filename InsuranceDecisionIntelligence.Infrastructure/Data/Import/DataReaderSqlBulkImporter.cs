@@ -37,7 +37,7 @@ public class DataReaderSqlBulkImporter : IDataReaderSqlBulkImporter
             await conn.OpenAsync();
 
             string baseName = CleanName(Path.GetFileNameWithoutExtension(fileName));
-            string tableName = $"{baseName}_{DateTime.Now:yyyyMMddHHmmss}";
+            string tableName = $"{baseName}_{DateTime.Now:yyyyMMddHHmmssfff}";
 
             var columns = new List<string>();
 

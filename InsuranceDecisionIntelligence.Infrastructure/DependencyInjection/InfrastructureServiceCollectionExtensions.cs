@@ -1,9 +1,10 @@
-using Hangfire;
+﻿using Hangfire;
 using InsuranceDecisionIntelligence.Application.Abstractions.Data;
 using InsuranceDecisionIntelligence.Application.Abstractions.File;
 using InsuranceDecisionIntelligence.Application.Abstractions.Persistence;
 using InsuranceDecisionIntelligence.Application.Abstractions.Queue;
 using InsuranceDecisionIntelligence.Application.Configuration;
+using InsuranceDecisionIntelligence.Application.Contracts.Event_Driven;
 using InsuranceDecisionIntelligence.Application.Services.Datasets;
 using InsuranceDecisionIntelligence.Application.Services.Uploads;
 using InsuranceDecisionIntelligence.Infrastructure.Data.Import;
@@ -11,6 +12,7 @@ using InsuranceDecisionIntelligence.Infrastructure.Data.Uploads;
 using InsuranceDecisionIntelligence.Infrastructure.FileStorage;
 using InsuranceDecisionIntelligence.Infrastructure.FileStorage.Readers;
 using InsuranceDecisionIntelligence.Infrastructure.Queue;
+using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,12 +41,33 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddHangfire(config => config
                 .UseSimpleAssemblyNameTypeSerializer()
                 .UseRecommendedSerializerSettings()
-                .UseSqlServerStorage(configuration.GetConnectionString("DefaultConnection")));
+                .UseSqlServerStorage(configuration.GetConnectionString("HangfireConnection")));
 
         services.AddHangfireServer(options =>
         {
             options.WorkerCount = 1;
         });
+
+        services.AddMassTransit(x =>
+        {
+            x.AddConsumer<FileUploadedConsumer>();
+
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host("localhost", "/", h =>
+                {
+                    h.Username("guest");
+                    h.Password("guest");
+                });
+
+                cfg.ReceiveEndpoint("insurance-file-import-queue", e =>
+                {
+                    //e.ConcurrentMessageLimit = 1;
+                    e.ConfigureConsumer<FileUploadedConsumer>(context);
+                });
+            });
+        });
+
         return services;
     }
 }

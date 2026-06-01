@@ -2,7 +2,9 @@ using Hangfire;
 using InsuranceDecisionIntelligence.Application.Abstractions.Data;
 using InsuranceDecisionIntelligence.Application.Abstractions.File;
 using InsuranceDecisionIntelligence.Application.Abstractions.Queue;
+using InsuranceDecisionIntelligence.Application.Contracts.Event_Driven;
 using InsuranceDecisionIntelligence.Application.PersistentJobQueue;
+using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -18,6 +20,8 @@ public class FileUploadImportService : IFileUploadImportService
     //private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     //private readonly IQueueService _taskQueue;
     private readonly IBackgroundJobClient _backgroundJobClient;
+    private readonly IPublishEndpoint _publishEndpoint;
+
 
     public FileUploadImportService(
         IFileStorageService fileStorage,
@@ -25,6 +29,7 @@ public class FileUploadImportService : IFileUploadImportService
         IDataReaderSqlBulkImporter dataReaderBulkImporter,
         //IQueueService taskQueue,
         IBackgroundJobClient backgroundJobClient,
+        IPublishEndpoint publishEndpoint,
         ILogger<FileUploadImportService> logger)
     {
         _fileStorage = fileStorage;
@@ -32,6 +37,7 @@ public class FileUploadImportService : IFileUploadImportService
         _dataReaderBulkImporter = dataReaderBulkImporter;
         //_taskQueue = taskQueue;
         _backgroundJobClient = backgroundJobClient;
+        _publishEndpoint = publishEndpoint;
         _logger = logger;
     }
 
@@ -50,8 +56,10 @@ public class FileUploadImportService : IFileUploadImportService
         await _fileStorage.CreateDirectoryAsync(folderPath);
         string fullPath = await _fileStorage.SaveAsync(file, folderPath);
 
-        _backgroundJobClient.Enqueue<FileImportJobProcessor>(processor =>
-            processor.ProcessFileAsync(fullPath, file.FileName));
+        await _publishEndpoint.Publish<FileUploadedEvent>(new FileUploadedEvent(fullPath, file.FileName));
+
+        //_backgroundJobClient.Enqueue<FileImportJobProcessor>(processor =>
+        //    processor.ProcessFileAsync(fullPath, file.FileName));
 
         //await _taskQueue.QueueBackgroundWorkItemAsync(fullPath);
 
