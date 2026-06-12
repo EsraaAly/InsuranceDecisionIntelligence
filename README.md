@@ -18,6 +18,24 @@ graph TD
 4. **[Api](InsuranceDecisionIntelligence.Api/)**: The ASP.NET Core Web API serving as the entry point for frontend clients, hosting Swagger documentation, and controlling middleware.
 5. **[UI](InsuranceDecisionIntelligence.UI/)**: A modern desktop WPF client featuring Material Design styles, pagination controls, and interactive data visualization charts.
 ---
+
+## 🔄 Data Flow Pipeline
+The diagram below details the pipeline workflow from file selection to dynamic chart visualization:
+```mermaid
+graph TD
+    UI[WPF UI Desktop App] -->|1. Upload File| API[ASP.NET Core Web API]
+    API -->|2. Save file to disk| LocalDisk[Local Directory /Uploads]
+    API -->|3. Publish FileUploadedEvent| RabbitMQ[MassTransit / RabbitMQ Broker]
+    RabbitMQ -->|4. Consume Event| Hangfire[Hangfire Background Job]
+    Hangfire -->|5. Read CSV dynamically| Reader[Sylvan Tabular Reader]
+    Reader -->|6. Write using SqlBulkCopy| DB[(SQL Server Dynamic Table)]
+    UI -->|7. Request Preview & Analytics| API
+    API -->|8. Dynamic Query using Dapper| DB
+    API -->|9. Return Aggregated Data| UI
+    UI -->|10. Render Chart| LiveCharts[LiveCharts / SkiaSharp]
+```
+---
+
 ## ⚡ Key Technical Features & Patterns
 * **Clean Architecture & Dependency Inversion:** Clear separation between business rules and infrastructural details.
 * **Event-Driven Architecture (EDA):** Leverages **MassTransit** over **RabbitMQ** to publish file upload events (`FileUploadedEvent`), decoupling the upload action from the heavy ingestion phase.
