@@ -75,7 +75,8 @@ Here is how the pipeline was rebuilt for a **99.9% performance gain**.
 
 #### 🎥 Performance & Ingestion Demo
 Here is a video demonstration of the ingestion pipeline and query performance:
-![Scaling Pipeline Demo](./assets/scaling_pipeline_demo.mp4)
+
+<video src="./assets/scaling_pipeline_demo.mp4" width="100%" controls></video>
 
 #### 📌 Phase 1 — Initial Implementation
 * **Architecture:** CSV ➔ `ExcelDataReader` ➔ `DataTable` ➔ SQL Server
