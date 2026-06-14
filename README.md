@@ -63,7 +63,7 @@ graph TD
 
 Below is an overview of the performance journey and results of all experiments conducted on the pipeline:
 
-![Data-Intensive Pipeline Performance Journey: All Experiments Compared](./assets/experiments_comparison_table.png)
+![Data-Intensive Pipeline Performance Journey: All Experiments Compared](./assets/experiments_comparison_table.jpg)
 
 Here are two detailed case studies documenting how the ingestion and query pipelines were optimized for massive scalability and high concurrency.
 
@@ -168,7 +168,7 @@ Below are the visualization charts comparing the performance across different co
 * 💡 **Bottleneck:** Network overhead & serialization
 
 ###### Phase 1 Logs (Pure Hangfire):
-![Phase 1 Logs - Pure Hangfire](./assets/pure_hangfire_logs.png)
+![Phase 1 Logs - Pure Hangfire](./assets/pure_hangfire_logs.jpeg)
 
 ##### Phase 2 — 8 Requests (Extreme Load)
 * **In-Memory Channels:** 2.7s — fastest raw throughput
@@ -178,7 +178,7 @@ Below are the visualization charts comparing the performance across different co
 * 📊 **Evidence:** GC Gen 0: 10,402 collections | Memory: 23,547 MB | Disk Queue Length spiked
 
 ###### Phase 2 Logs (Hybrid Pattern):
-![Phase 2 Logs - Hybrid Pattern](./assets/hybrid_pattern_logs.png)
+![Phase 2 Logs - Hybrid Pattern](./assets/hangfire_logs.jpg)
 
 ##### Phase 3 — The Fix (Separate Hangfire DB)
 The Hybrid pattern wasn't slow because of the architecture — it was fighting `SqlBulkCopy` for the same SQL Server resources.
@@ -189,7 +189,7 @@ The Hybrid pattern wasn't slow because of the architecture — it was fighting `
 * *Note on 16.8M rows:* Same DB: 554s ➔ Separate DB: 564s. Only +10s (+2%). Why? 16M rows is **volume-bound**, not DB-contention bound.
 
 ###### Phase 3 Logs (Hybrid Pattern + Separate DB):
-![Phase 3 Logs - Hybrid Pattern + Separate DB](./assets/hybrid_pattern_separate_db_logs.png)
+![Phase 3 Logs - Hybrid Pattern + Separate DB](./assets/hybrid_pattern_separate_logs.jpg)
 
 #### 🔍 Deep-Dive Analysis
 
